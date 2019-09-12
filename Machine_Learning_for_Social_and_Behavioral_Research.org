@@ -1,0 +1,476 @@
+#+TITLE: Machine Learning for Social and Behavioral Research
+#+AUTHOR: Christopher Carbonaro
+#+EMAIL: ccarbona@nd.edu
+#+TODO: TODO IN_PROGRESS | WAITING DONE
+#+CATEGORY: ML
+#+Professor: Dr. Ross Jacobucci
+#+CourseListing: PSY-40122; PSY-60122; MDSC-40122
+#+OfficeRmNm: Corbett E440
+#+OfficeHrs: Wed. 10:30-11:30
+* Introduction and Housekeeping
+  <2019-08-27 Tue 09:20-10:45>
+
+** TODO Reading and reflections                                    :Readings:
+   DEADLINE: <2019-09-19 Thu +1w>
+   :PROPERTIES:
+   :LAST_REPEAT: [2019-09-12 Thu 10:29]
+   :END:
+
+   - State "DONE"       from "TODO"       [2019-09-12 Thu 10:29]
+   - State "DONE"       from "TODO"       [2019-09-04 Wed 23:44]
+** Machine Learning Terminology
+   Note that we could have used any of the following terms:
+   - Statistical Learning
+   - Data Mining
+   - Artificial Intelligence
+   - Exploratory Data Mining
+   - Big Data
+   - Data Science
+     
+     Machine learning is not an algorithm (you already know this); it's a larger concept which can be applied in multiple different ways.
+   
+*** Algorithm vs Model
+    Model in statistics typically refers to a "general model" which conveys how the data were generated. Think of it as:
+    - Algorithm = Method used: Linear regression, random forests, decision trees: $Y = f(X) + e$
+    - Model = Resulting relationship between X and Y after fitting (algorithmic model): $Y = \hat{Y} + e$
+
+*** Exploratory Data Analysis
+    ^ A term attributed to John Tukey's book. What if you don't begin your analysis with a hypothesis? This is in contrast to how research was conducted earlier i.e. as "Confirmatory Research." ML is not explanatory. It tries to get at /exactly/ what the causal factors are, but this leads to very complicated explanations.
+
+*** Regression vs Classification
+    - Regression: The outcome of interest is continuous. Either integer or interval (metric)
+    - Classification: The outcome of interest is categorical. Either binary or multicategorical.
+
+      Complications:
+      Likert type variables - Just refer to as ordinal, but more classification. Can produce predicted probabilities (logistic regression) or produce class predictions (clustering).
+
+      N.B. The model can't think. If your measurments are poor measurments, you will get poorly modeled results.
+
+*** X's and Y's
+    Most models will have a form of:
+    $$Y = f(X) + e$$
+    
+    Right hand side:
+    - X's
+    - Predictors
+    - Covariates
+    - Inputs
+
+    Left hand side:
+    - Y
+    - Outcome
+    - Response
+
+*** Do we have a Y?
+    One major distinction in ML is between supervised and unsupervised learning.
+    
+    - Supervised: These is an outcome
+    - Unsupervised: There isn't an outcome of interest
+    - Semi-Supervised: Neural Network type learning
+
+    Generally, unsupervised means we are doing data reduction on the X's.
+
+*** Univariate vs Multivariate
+    - Univariate: a single outcome
+    - Multivariate: multiple outcomes
+    - Multivariable: multiple predictors
+
+    Most things in this course are univariate and multivariable, e.g. 
+    $$Y = b_0 + b_1 X_1 + b_2 X_2 + e$$
+
+*** Inference
+    Inference is typically reserved for models that make assumptions about a population (asymptotics). Mostly this occurs in the context of linear models.
+
+    An analogous term is /explanation/: We want to derive a model to explain the relaitonship between X's and Y.
+
+
+    This is in contrast to purely predictive modeling (forecasting), often denoted by the use of "black box" algorithms.
+
+*** Parametric vs Non-Parametric
+    - Parametric: Making distributional assumptions and using a finitenumber of parameters.
+    - Non-Parametric: Everything else, typically encapsulating most ofmachine learning
+
+    Why make assumptions?
+    - Requires a smaller sample size
+    - Often faster
+    - More interpretable
+*** Bayes vs Frequentist
+    The distinction of Bayes vs Frequentist when it comes to p-values, regression, and such is very different than in ML.
+
+    In ML, there is less of a debate. Bayesian is mostly used to estimate the coefficients of the model, often times faster than traditional (frequentist) approaches. In ML, priors are typically less important and have less of an impact on the results (posterior).
+** What is Big Data?
+   <2019-08-29 Thu 09:30-10:45>
+*** "Is my data big enough?"
+    99% of the time: Yes and No. It will be large enough to use the methods but small enough to incur many difficulties.
+   
+    Beware overfitting (where you get answers which are not generalizing to other samples).
+*** Cattell's Data Box
+    Time is becoming increasingly important as a variable.
+
+    We used to have problems with keeping study participants over long spans of time. This is now easier with ease of communication between the conductor of the study and the recipient. But time can even be near-continuous as a variable now, with constant updates for variables like location.
+*** Big N, Small P
+    This is traditional social and behavioral research: N > P.
+
+    Let T represent time.
+    If T = 1, this is cross-sectional.
+    If T > 1, the study is longitudinal.
+*** Small N, Big P
+    This falls in line with genetics and neuro research.
+    - Lare numbers of SNP's
+    - Large numbers of voekls from MRI.
+
+    This work presents a number of problems for traditional statistical algorithms. You /cannot/ run a linear regression on a sample where N < P.
+*** Small N, Small P
+    Both N and P don't provide enough information. So we needd large T (time).
+  
+    N = 1, idiographic approach.
+    N > 1, ecological momentary assessment or other.
+   
+    Traditional statistical models need N = big (longitudinal), but recently it has been possible to do studies on an individual level (idiographic) by using large T. This gives the researcher enough observations to begin drawing conclusions.
+*** Sources of Data
+    ML algorithms allow us to analyze data from new sources:
+    - genetics
+    - neuro
+    - text
+    - social media
+
+    One perspective: These new forms of assessment with replace traditional forms.
+    Better prespective: These new forms of assessment will /supplement/ traditional forms.
+
+    The same is true for ML vs Statistics -- ML can supplement our traditional approaches.
+* Week 2: Theory and ML
+  <2019-09-03 Tue 09:30-10:45> 
+** Exploratory and Confirmatory Research
+*** Confirmatory Research
+    Definition: A common view of what constitutes confirmatory research is a seriesof a priori hypotheses followed by research design (experimental inmost cases) to test the hypotheses, gathering data, analysis,concluded with inductive inference (Jaeger & Halliday, 1998)
+
+    - Confirmatory – Minimize Type I errors.
+      - Goal is to find causal mechanisms. Stringent alpha values.
+    - Exploratory – Minimize Type II errors. 
+      
+    Confirmatory research is a hallmark of science. Stating hypotheses,running a study or experiment to test these hypotheses, and theneither finding enough evidence to support or fail to support thehypothesis, is an efficient and important cornerstone to this practice.
+
+    Think of confirmatory as working from theory to data, whereas exploratory can be thought of as working from data towards theory.
+
+*** Confirmatory Applied to Statistical Methods
+    In defining confirmatory research, it is common to apply this to specific algorithms/models:
+    - ANOVA
+    - Mediation Models
+    - Structural Equation Models
+    - Propensity Score Matching
+    The common theme is that these are often defined in terms of /causal/ modeling.
+*** Modeling vs Practices
+    Confirmatory models can be used in exploratory ways.
+
+    Theoretical modeling - how much theory is incorporated into the model being tested?
+    Theoretical practices - how much does theory inform every other part? e.g. data cleaning, whether hypotheses come before analysis, etc...
+*** Confirmation and the Replication Crisis
+    Replication crisis -> New emphasis on confirmatory research practices (e.g., Wagenmakers et al., 2012).
+
+    Biggest Takeaways:
+    - Pre-registration
+    - Reporting all analyses
+    - Not generating hypotheses from the data analysis
+    - Posting data and analysis scripts
+    - Pre-stating what confounders (or control variables) are used
+
+    Lieberman & Cunningham (2009) found the average issue of JPSP had an average of 93 statistical tests per paper.
+
+*** Exploratory Research
+    Definition: One consistent distinction is in the types of data aligned with each type of modeling, with confirmatory data analysis (CDA) using mostly experimental data, while exploratory data analysis (EDA) typically uses observational data (Good, 1983).
+
+    EDA is mostly attributed to Tukey - non-hypothesis informed graphical exploration of data to tell a story.
+
+*** Generating Hypotheses
+    EDA is more concerend with observable data, as opposed to those from experiements (Good, 1983) - obtained informally, thus the methods are often more informal.
+
+    EDA is mostly concerned with the /encouragement/ of hypothesis formulation (Good, 1983).
+
+*** EDA Can Improve Hypotheses
+    Even if a hypothesis is formed, tested, and not rejected, there is almost always room for improvement.
+
+    Examples:
+    - Model the residuals
+    - Follow up traditional statistics with ML
+
+    EDA is sometimes likened to detective work (per Tukey) as a mechanism to uncover those things missed through more restrictive methods.
+
+*** Motivation for Exploratory Research
+    Jaeger & Halliday (1998) - "Explicit hypotheses tested with confirmatory research usually do not spring from an intellectual void but instead are gained through exploratory research."
+
+    Some sects of Philosophy of science hold this form of notion (hypothetico deductivists) -> "Thinking really really hard"
+
+*** Using ML to Inform Confirmatory Research
+    Using twitter to assess moral content on twitter, followed by an experiment that manipulated perceived moral differences (Dehghani et al., 2016).
+
+    - First step: Machine learning identifies the most important aspects - Theory generation.
+    - Second step: Follow up with theory-testing in the form of an experiment or observational study.
+
+*** Splitting the Data
+    One way to use the same data for EDA and CDA is to split it prior to analysis
+    - EDA on first half of sample - can torture as much as you want.
+    - CDA on second half using hypotheses generated on first
+      
+    *N.B.* This cuts your data set in half, reducing your statistical power.
+
+    According to Prof. Jacobuccui, this is a bad idea. You are less likely to find something in the first place.
+
+*** Data Reduction
+    Descriptive statistics is one form of data reduction: "We must suppress some of the truth to communicate the truth" (p 286; Good, 1983).
+
+    Using of plotting techniques such as stem-and-leaf or histogram, or something like PCA:
+
+*** Wonky Statistics
+    There is nothing wrong with EDA - Problems occur when EDA is passed off as CDA.
+
+    Example: A p-value works under the assumption that this is the single test being used.
+
+    E.g., Torturing the data until it confesses - and it will confess.
+
+** Culture Shift
+   <2019-09-05 Thu 09:30-10:45>
+** DONE Homework Assignment 1
+   DEADLINE: <2019-09-12 Thu 09:30>
+   [[./Lab_HW_1_Writeup.Rmd][Here]] is the .Rmd file.
+* Week 3: Diagnostics and Resampling
+  <2019-09-10 Tue 09:30-10:45>
+** Intro
+   Tuning parameters: The settings we use for individual algorithms. Regression does not have tuning parameters, but things like random forests do. *N.B. You likely will not know which parameters are best suited for your task. The only way to find out is to run models.* Think of topic modeling as an example.
+   
+   Polynomial regression -- the power
+   Regularization -- The penalty
+   Decision Trees -- Complexity parameter (depth)
+   Random Forests -- Number of trees
+   
+   Any other examples?
+** $R$
+   What we want: $_TR$ (denoting the /true/ $R$) i.e. what $R$ is in the population.
+
+   Problem is, we only have a sample. Given this, the next best thing we can try and get an estimate of is $_TRS$, or shrunken $R$. This always falls below $_TR$, hence \textit{shrunken}.
+
+   There are a number of ways to try and get an estimate of $_TRS$. Notably:
+
+   - Cross-validation
+   - Bootstrapping
+** Why we can only get an estimate of $_TR$
+   OLS is about maximizing the fit between $Y$ and $\hat{Y}$. This means being short-sighted: We don't think about other samples when creating the weights.
+
+   This is fine and dandy because our estimates for $b_j$ are unbiased. But our model fit is biased -- We overfit our current sample.
+
+   Big sample and small numbers of predictors: This is not a problem.
+
+   Small sample and large number of predicts: Problem.
+** An Example:
+   If you add more predictors to a model, you will /always/ get a better $R^2$. However, your /adjusted/ $R^2$ may not increase. In fact, after a point, it will go down, as you are penalized for using too many predictors.
+
+** Model Assessment vs Selection
+
+   Model Assessment: In only running one model, or after choosing a final model, determining the most unbiased assessment of model fit, either on new data or what it would be on new data.
+
+   Model Selection: Estimating the performance of multiple algorithms and choosing a final model among these.
+
+** Validation Set Approach
+   
+   The first, and most popular way to conduct cross-validation is termed the /validation set/ approach.
+   
+   Randomly split the sample in half: 50% Training & 50% Test samples.
+
+   - Training sample: Explore to your heart's desire.
+   - Test sample: Treat best model parameters from training as !!! *fixed* !!! and find new model fit.
+
+** Creating Predictions
+
+   $$MSE_{holdout}=\frac{1}{n}\sum_{i=1}^{n}(y_{i,holdout}-\hat{f}_{training}(x_{i,holdout}))^{2}$$
+   
+   Important: The model is not re-estimated. We use the parameters to /create/ predictions.
+
+** Validation Set Example
+
+   I split a dataset into 3 parts.
+
+   - 100 Training cases
+   - 100 Validation cases
+   - 2036 Test cases.
+
+   In practice, just split 50-50 (Train-Test), don't create such a large Test dataset. This is just for demonstration.
+
+** Performance
+   - Training: $R^2 = 0.25$, $R^2_{adj} = 0.088$
+   - Test: $R^2 = 0.12$
+   - "Population": $R^2 = 0.19$, $R^2_{adj} = 0.18$
+
+   With this approach, inference on the training set over-estimates the model fit, while the test sample under-estimates the fit. This is a common occurrence when starting with a small sample.
+
+** An example
+   
+   You should *always* see some indication of how $R^2$ changed for your Test set and your Training set.
+
+   If you graph this, you should see an inverted 'U' shaped curve. 
+
+** Another Approach: k-Fold Cross Validation
+
+   Another approach to cross-validation is termed /k-Fold/ CV, since the data is split into k number of partitions. Common to use either 5 or 10 fold. 
+
+   Here, you split, for example, into 4/5ths training and 1/5th test. Then test how well it fits. Then shift your frame. E.g. Parts 1:4 are training, 5 is test. Then Parts 1:3 + 5 are training, 4 is test. Then Parts 1:2 + 4:5 are training, 3 is test, etc.
+
+** Bootstrapping
+
+   Very similar to k-fold cross-validation, bootstrapping changes one thing: samples are replaced.
+
+   Those sample that are not selected, about 33%, are used as the holdout to "predict" on, similar to K-fold.
+
+   Repeating this 100 times, we get an average $R^2$ of 0.056, and SE of 0.045.
+
+   Note -- There are multiple forms of bootstrap sampling:
+   1. Create bootstrap sample, then use not selected as a test
+   2. Just use bootstrap sample to estimate a model
+
+   The second form is often used to estimate standard errors.
+   
+** Which to Use?
+   
+   The validation set approach is the most commonly understood, especially in domains where Machine Learning is not well understood. Best for when you have a large initial sample and are unsure as to what method you want to use. 
+
+   However, the validation approach results in a loss of power. If less than 1000 observations, better to use k-fold or boostrapping. If < 100, bootstrapping is better.
+
+   *Don't take these cutoffs as absolute truth, it depends on method used and number of variables.*
+
+   Most don't have a large enough sample size. Leading to:
+   - Lack of power = underfitting
+
+** Model Selection
+
+   Let's say I want to compare multiple algorithms: linear regression, decision trees, and random forests.
+
+   - I use 5-fold for model assessment
+   - Just selecting the model with the lowest 5-fold Mean Standard Error (MSE) incurs a small degree of bias
+   - Larger bias with more algorithms and tuning parameters used.
+
+   This is known as /optimization bias/.
+   
+   This is what happens when you conflate model assessment and selection.
+
+** Nested Cross-Validation
+
+   Use two loops.
+
+   Begin by performing cross validation on your training set. Then conduct cross-validation on your whole sample i.e. check your test data on your entire training data.
+** Using the ~Caret~ package
+*** Demo Script from Professor Jacobucci
+
+    #+begin_src R
+    library(caret)
+    library(AppliedPredictiveModeling)
+    library(partykit)
+    set.seed(12345)
+    
+    # Building a sample dataset
+    lat.var1 = rnorm(300)
+    lat.var2 = rnorm(300)
+
+    ## Getting an output from the predictors
+    y = 0.5*lat.var1 + 0.5*lat.var2 + rnorm(300,0,1)
+
+    ## lm() trains a linear model
+    summary(lm(y ~ lat.var1 + lat.var2))
+
+    ## Putting the data into a df
+    dat1 = data.frame(y=y,x1=lat.var1,x2=lat.var2)
+
+
+
+    # nested CV demo
+    outer.repeat = 5
+    method.select = rep(NA,
+                        outer.repeat)
+    rsq = rep(NA,
+              outer.repeat)
+  
+    # Creating the Partitions for CV
+    ## This is for the outer loop
+    folds.samp1 = createFolds(dat1$y,
+                              k=outer.repeat,
+                              list=F) 
+
+    # CV
+    #folds.samp1 = createResample(dat1$y,times=outer.repeat,list=F) # boot -- increase number of repeats
+    # Looping through the outer partitions
+for(j in 1:outer.repeat){
+  lm.out = train(y ~ .,
+                 dat1[folds.samp1!=j,],
+                 method="lm",
+                 trControl=trainControl(method="cv")) # default is 10-fold
+    
+    
+  tree.out = train(y ~ .,
+                   dat1[folds.samp1!=j,],
+                   method="ctree",
+                   trControl=trainControl(method="cv"),
+                   tuneLength=1)
+    
+  ## Checking the R-Squared for partitions within each outer partition. N.B. Train() is partitioning and doing CV for you behind the scene
+  if (lm.out$results$Rsquared > tree.out$results$Rsquared){
+      method.select[j] = "lm"
+      lm.out.test = train(y ~., dat1[folds.samp1!=j,],method="lm",trControl=trainControl(method="none")) # none uses whole data
+      rsq[j] = cor(dat1[folds.samp1==j,"y"],predict(lm.out.test,dat1[folds.samp1==j,]))**2
+    }else{
+      method.select[j] = "ctree"
+      ctree.out.test = train(y ~., dat1[folds.samp1!=j,],method="ctree",trControl=trainControl(method="none"))
+      rsq[j] = cor(dat1[folds.samp1==j,"y"],predict(ctree.out.test,dat1[folds.samp1==j,]))**2
+    }
+    
+}
+
+rsq
+method.select
+
+    #+end_src
+** Stratified CV
+
+   Class imbalance can cause a multitude of problems (think, what happens if you are breaking up samples and only 5% of your cases are of one category? You might get a partition without any cases for that category). One solution is Stratified CV:
+   - K-fold CV with pre-allocate positive cases to ensure class balance
+     
+   Inconsistent results to show whether it helps. Better option is up/down sampling, which we'll cover later in the semester.
+
+** Repeated CV
+
+   The pre-allocation of fold partitions can impart some bias. To reduce this, repeated CV has been proposed.
+   
+   Entails repeated 5 or 10 fold CV multiple times (e.g., 10) to ensure adequate randomness in the resulting partitions.
+
+** Leave-One-Out CV
+
+   An older form of cross-validation, and maybe the simplest is leave-one-out CV (LOOCV).
+   - Train on N-1, Test on 1
+   - Repeat N times
+
+   Doesn't have good of a balance of bias and variance, but will see in some small sample studies -- MRI research.
+
+** Fit Metrics
+   There are a host of different fit criteria that try and approximate bias incurred by overfitting:
+
+   Fit = within sample fit + complexity penalty
+
+
+   The most well known:
+   - Bayesian Information Criterion -- penalizes for # of parameters and N
+   - Akaike Information Criterion -- penalizes for # of parameters 
+
+   Not available for most ML algorithms and only useful in a relative sense. They must compute a log likelihood ($ln(\text{likelihood})$).
+
+** TODO Homework Assignment 2
+   DEADLINE: <2019-09-17 Tue 09:30>
+
+* Week 4: Regression
+* Week 5: Regression (cont.)
+* Week 6: Trees
+* Week 7: Ensembles
+* Week 8: Ensembles (cont.) and Project Proposals
+* Week 9: No Class (Fall Break)
+* Week 10: Ensembles (cont.)
+* Week 11: Nonlinear methods
+* Week 12: Measurment and ML
+* Week 13: Searching for Groups
+* Week 14: Longitudinal Data
+* Week 15: Text Mining
+* Week 16: Social Networks
