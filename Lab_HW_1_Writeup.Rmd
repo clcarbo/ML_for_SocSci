@@ -1,0 +1,217 @@
+---
+title: "Lab HW 1 Writeup"
+author: "Christopher Carbonaro"
+date: "9/9/2019"
+output: word_document
+---
+# 1. Reading in a Dataset
+
+For this homework assignment, I will be using the [2017 American Housing Survey (AHS)](https://www.census.gov/programs-surveys/ahs/data.html) dataset. Note that the dataset consists of four Public Use Files. This is so observations can be recorded for different units without being redundant. For example, one file records information about individuals while another records information about households and everyone living within. Thus, the data in each file can be linked to the other files by matching the entries recorded under the `CONTROL` variable. For the sake of simplicity for this lab, I will only be working with the `household.csv` file.
+
+Note that this entire paper is reproducible; just use the `knitr` package to process this assignment's .Rmd file. Here is the code I used to configure the environment.
+```{r package_prep, echo = T, results = 'hide'}
+# Code used to load packages
+require(pacman)
+p_load(tidyverse,
+       mice,
+       psych,
+       corrplot)
+
+# Setting the seed to fix results produced by random number generation
+set.seed(123)
+```
+
+With the environment configured, I used the following code to read in the `household.csv` dataset. Using the `na` argument for `read_csv()`, I recoded variables with a value of -9 to indicate a missing value. I also used the `select()` function to remove the included replication weights. Finally, I made a subset of the original dataset. Since the original contains over 600 variables, I have reduced the dataset to 11 variables for the purpose of making this lab slightly more manageable.
+
+```{r data_input, cache = T, results = 'hide', message = F}
+household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
+                      # N.B. For this assignment, I have decided to only classify responses where the respondent chose not to answer (or claimed not to know) as missing. These are denoted by a '-9' in the responses. If the question did not pertain to the individual i.e. was 'out of scope' for the interview, I am considering that datum to be valid. These responses are denoted by a value of '-6'.
+                      na = c("",
+                             "NA",
+                             "None",
+                             "'-9'",
+                             "-9")
+                      ) %>%
+  # This line removes variables which are included as replication weights. These variables aren't real observations, so for our purposes, they should be discarded (at least for now)
+  select(-contains("REPW"))
+
+nrow(household)
+ncol(household)
+
+house_sub <- household[c("TENURE",
+                         "OWNLOT",
+                         "YRBUILT",
+                         "LOTSIZE",
+                         "ADEQUACY",
+                         "NUMPEOPLE",
+                         "NUMYNGKIDS",
+                         "NUMOLDKIDS",
+                         "HHAGE",
+                         "HINCP",
+                         "PERPOVLVL")]
+```
+
+`HHAGE` (householder's age) and `YRBUILT` (year the house was built) are quantitative variables, while `OWNLOT` (does the respondent own the lot for their residence?) is categorical.
+
+# 2. Imputing Missing Values
+
+We can check to see if our `house_sub` dataset (the subset of the original with 11 variables) is missing any data by using the `mice` package:
+
+```{r check_missing}
+md.pattern(house_sub)
+```
+
+The only variable with missing data is `OWNLOT`. Some respondents must have been unsure as to whether they were the owner. There are 923 missing entries. Using the `mice` package, we can impute values for these missing data points.
+
+```{r impute_missing, cache = T}
+# Note that we must change OWNLOT from a character vector to a factor variable. Otherwise, the mice() function will not work properly.
+house_sub$OWNLOT <- as.factor(house_sub$OWNLOT) %>%
+  recode_factor(`'1'` = "Yes",
+                `'2'` = "No",
+                `'-6'` = "Not Applicable")
+
+house_sub_comp <- mice(house_sub,
+                       m = 1) %>%
+  complete()
+
+# By checking md.pattern() again, we can see that OWNLOT is no longer missing any values.
+md.pattern(house_sub_comp)
+```
+
+# 3. The Distribution of Variables
+
+We can look at the distributions for these variables using the `ggplot2` package (see the .Rmd file for the source code). In addition, note that I have excluded the responses for Homeowner Age which signified being non-applicable.
+
+```{r dists, echo = F, message = F}
+base <- ggplot(house_sub_comp) +
+  theme_minimal()
+
+base +
+  geom_histogram(aes(YRBUILT),
+                 color = "#0059b3",
+                 fill = "#cce6ff",
+                 size = 1.2,
+                 binwidth = 10) +
+  labs(title = "Distribution of Construction Year",
+       x = "Year Built",
+       y = "Count")
+  
+base +
+  geom_histogram(aes(HHAGE),
+                 color = "#009933",
+                 fill = "#b3ffcc",
+                 binwidth = 1) +
+  labs(title = "Distribution of Homeowner Age",
+       subtitle = "N.B. Counts of 'Not Applicable' are not Included Here",
+       x = "Homeowner Age",
+       y = "Count") +
+  xlim(0, 100) +
+  ylim(0, 2500)
+
+base +
+  geom_histogram(aes(PERPOVLVL,
+                     y = ..density..),
+                 color = "#4d0099",
+                 fill = "#d9b3ff",
+                 binwidth = 20) +
+  labs(title = "Homeowner Income as a\nPercentage of the Poverty Threshold",
+       x = "Income Divided by the Poverty Threshold",
+       y = "Density") +
+  geom_vline(xintercept = 100,
+             color = "#4d4d4d",
+             size = 1.5,
+             linetype = "dashed") +
+  geom_density(aes(PERPOVLVL),
+               alpha = 0.2,
+               fill = "#0066ff",
+               color = "black")
+  
+house_sub_comp %>%
+  group_by(OWNLOT) %>%
+  summarise(Count = n()) %>%
+  knitr::kable(caption = "Distribution of Individuals Who Own Their Land")
+  
+house_sub_comp$ADEQUACY <- recode(house_sub_comp$ADEQUACY,
+       "'1'" = "Adequate",
+       "'2'" = "Moderately Inadequate",
+       "'3'" = "Severely Inadequate")
+
+house_sub_comp %>%
+  group_by(ADEQUACY) %>%
+  summarise(Count = n()) %>%
+  knitr::kable(caption = "Adequacy of Housing Dist.")
+```
+
+# 4. Finding Aberrant Responses
+
+We can use the `psych` package to get a close look at our variables.
+
+```{r abbs, message = F}
+describe(house_sub_comp,
+         skew = F,
+         na.rm = F) %>%
+  knitr::kable(caption = "Data Summary")
+```
+
+# 5. Classes of the Variables
+
+By using the `str()` function, we can get a description of the class of each variable.
+
+```{r classes, message = F, comment = ''}
+str(house_sub_comp)
+```
+
+The following code converts a categorical variable to a numeric variable and back.
+
+```{r conv, message = F, comment = ''}
+temp <- as.numeric(house_sub$OWNLOT)
+str(temp)
+
+temp <- factor(temp,
+               levels = c(1,
+                          2,
+                          3),
+               labels = c("Yes",
+                          "No",
+                          "Unsure"))
+str(temp)
+
+```
+
+# 6. Splitting the Sample
+
+The following code splits the dataset and puts the components into a list. Here, I split the data into 5 equal parts.
+
+```{r split}
+split_data <- function(data, n){
+  # The lower row bound
+  outer <- (nrow(data) / n) * c(1:n)
+  # The upper row bound
+  inner <- c(1, outer[1:(length(outer) - 1)])
+  
+  # A helper function which takes a number which acts as the index for the vectors inner and outer. These then select a range of rows from the dataset specified by the data parameter.
+  slicer <- function(n2, data, inner, outer){
+    data[inner[n2]:outer[n2],]
+  }
+  
+  # Finally, this returns a list of the broken up dataframes.
+  lapply(1:n, slicer, data = data, inner = inner, outer = outer)
+}
+
+house_sub_comp_split <- split_data(house_sub_comp, 5)
+
+class(house_sub_comp_split)
+length(house_sub_comp_split)
+str(house_sub_comp_split[[1]])
+```
+
+# 7. Correlation Plots
+
+Using the `corrplot` package, we can quickly look for correlations between all variables.
+
+```{r correlations}
+correlations <- house_sub_comp %>%
+  select_if(is.numeric) %>%
+  cor() %>%
+  corrplot.mixed(tl.cex = 0.5)
+```
