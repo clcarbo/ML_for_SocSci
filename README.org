@@ -1,0 +1,4 @@
+#+TITLE: Machine Learning for Social Science
+#+AUTHOR: Christopher Carbonaro
+
+These are my scripts for my Machine Learning class. I will probably add more details here from my lecture notes over time.
