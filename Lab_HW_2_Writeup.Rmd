@@ -1,0 +1,29 @@
+---
+title: "Lab HW 2 Writeup"
+author: "Christopher Carbonaro"
+date: "9/16/2019"
+output: pdf_document
+---
+
+```{r setup, include = F, cache = T}
+require(pacman)
+p_load(tidyverse,
+        caret,
+        psych)
+
+household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
+                      
+                      na = c("",
+                             "-6",
+                             "'-6'",
+                             "\"-6\""),
+                      
+                      quote = "") %>%
+  select(-contains("repw")) %>%
+  mutate_if(is_character, as_factor)
+```
+
+# 1. Using the `caret` package to train a model using 3 types of resampling
+
+For this lab, I will be reusing the AHS `household` dataset which I used in the first lab. The dataset can be found [By clicking here](https://www.census.gov/programs-surveys/ahs/data/2017/ahs-2017-public-use-file--puf-/ahs-2017-national-public-use-file--puf-.html). I will also 
+

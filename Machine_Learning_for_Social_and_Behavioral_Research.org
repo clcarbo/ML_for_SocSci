@@ -425,6 +425,7 @@ rsq
 method.select
 
     #+end_src
+    
 ** Stratified CV
 
    Class imbalance can cause a multitude of problems (think, what happens if you are breaking up samples and only 5% of your cases are of one category? You might get a partition without any cases for that category). One solution is Stratified CV:
@@ -459,9 +460,61 @@ method.select
    Not available for most ML algorithms and only useful in a relative sense. They must compute a log likelihood ($ln(\text{likelihood})$).
 
 ** TODO Homework Assignment 2
-   DEADLINE: <2019-09-17 Tue 09:30>
-
+   DEADLINE: <2019-09-19 Thu 09:30>
 * Week 4: Regression
+** Classification Metrics
+   <2019-09-17 Tue 09:30-10:45>
+*** Classification Definition
+
+    Classification = modeling a categorical outcome
+    - binary
+    - multicategorical
+
+    Binary is far more common, and most metris will generalize to multicategorical outcomes.
+
+    Most algorithms output a predict probbability of belonging to class 1. - Clustering and others = direct assignment to class
+
+*** Goals
+    Instead of focusing on objective functions for categorical outcomes, our goal is to answer the following question: How well did our model do in predicting a categorical outcome?
+
+    In this, we run various algorithms and create predictions. Then comparing predictions to the actual outcomes.
+
+*** Accuracy
+
+    $$\text{Accuracy} = \frac{1}{n}\sum_{i=1}^{n}I(y_{i}=\hat{y}_{i})$$
+
+    What percentage of observations do we accurately classify?
+    
+*** Example
+    We are going to try and model whether someone has endorsed depressive symptoms.
+    - Use a cutscore on the BDI from the epi.bfi dataset in the psych package.
+
+    Just use the five Big Five Inventory (BFI) scores as predictors.
+    - Agreeableness, Conscientiousnous, Extraversion, Neuroticism, Openness
+
+*** Predicted Probabilities
+
+    [[./L_Pics/Pred_Class_Model.png]]
+
+*** Calibration Plot
+
+    [[./L_Pics/Calib_Plot_1.png]]
+
+*** Confusion Matrix
+
+    [[./L_Pics/Conf_Mat_1.png]]
+
+    Sensitivity can be thought of as the total number of predicted positive cases divided by the /actual/ number of positive cases.
+
+    Specificity is the counterpart of sensitivity: it is the total number of predicted negatives divided by the /actual/ number of negatives.
+
+
+    |                   | Actual Outcome |              |               |
+    |                   | Positive       | Negative     |               |
+    |-------------------+----------------+--------------+---------------+
+    | Predicted Outcome | Positive       | TP           | FP ($\alpha$) |
+    |                   | Negative       | FN ($\beta$) | TN            |
+
 * Week 5: Regression (cont.)
 * Week 6: Trees
 * Week 7: Ensembles
