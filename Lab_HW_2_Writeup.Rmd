@@ -8,8 +8,15 @@ output: pdf_document
 ```{r setup, include = F, cache = T}
 require(pacman)
 p_load(tidyverse,
-        caret,
-        psych)
+       caret,
+       psych,
+       mice)
+
+numFacts <- function(x){
+  as_factor(x) %>%
+    as.numeric() %>%
+    as_factor()
+}
 
 household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
                       
@@ -19,11 +26,285 @@ household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
                              "\"-6\""),
                       
                       quote = "") %>%
-  select(-contains("repw")) %>%
-  mutate_if(is_character, as_factor)
+  select(-contains("repw"), -starts_with("J")) %>%
+  mutate_if(is_character, numFacts)
 ```
 
 # 1. Using the `caret` package to train a model using 3 types of resampling
 
-For this lab, I will be reusing the AHS `household` dataset which I used in the first lab. The dataset can be found [By clicking here](https://www.census.gov/programs-surveys/ahs/data/2017/ahs-2017-public-use-file--puf-/ahs-2017-national-public-use-file--puf-.html). I will also 
+For this lab, I will be reusing the AHS `household` dataset which I used in the first lab. The dataset can be found [by clicking here](https://www.census.gov/programs-surveys/ahs/data/2017/ahs-2017-public-use-file--puf-/ahs-2017-national-public-use-file--puf-.html). Note that I have removed both 1. the replication weights and 2. the variables indicating whether a corresponding variable was imputed/changed ex post facto. This reduces the original dataset from roughly 1,000 variables to only 311. I also removed "Near Zero-Variance Predictors" and converted my factors to dummy variables with the following code (more information about what this mean [can be found here](https://topepo.github.io/caret/pre-processing.html#identifying-correlated-predictors)):
 
+```{r, cache = T, comment = "", warning = F, error = F}
+
+set.seed(123)
+
+########################
+## Removing variables ##
+########################
+
+## Calculate which variables have nearZeroVariance
+NZV <- nearZeroVar(household)
+## Filter out those variables by omitting them from the columns selected
+householdFiltered <- household[, -NZV] %>%
+  select(-CONTROL)
+
+
+
+###########################################
+## Converting Factors to Dummy Variables ##
+###########################################
+
+## 1. Create a list of dummyvariable attributes
+recodedHH <- dummyVars(~ .,
+                       data = householdFiltered,
+                       fullRank = T) %>%
+  ## 2. Create a matrix from this list
+  predict(newdata = householdFiltered) %>%
+  ## 3. Convert it into a data frame (tibble)
+  as_tibble()
+  
+###########################
+## Impute missing values ##
+###########################
+
+## !!!NOTE!!! The imputed values are the medians of each variable
+## This is PROBABLY NOT IDEAL! K-nearest-neighbor would be
+## better, but I think I would need to do dimension 
+## reduction
+imputedHH <- preProcess(recodedHH,
+                        method = "medianImpute") %>%
+  predict(newdata = recodedHH)
+
+## In the describe() function, I am using the sample function
+## to randomly select 10 variables from the dataset
+describe(imputedHH[, sample(1:ncol(recodedHH),
+                            10)],
+         skew = F) %>%
+  knitr::kable(caption = "Summary Statistics of a Few Included Variables")
+
+```
+
+## Using the Whole Sample
+
+Now we can start training a model. The following code is going to select a subset of our variables from our initial dataset to avoid slowing down our computing time. Specifically, we are going to try to predict an individual's commute distance, or `DIST`, from the year their house was built, the number of floors in their house, whether they take the bus to work, whether they take the subway to work, how many people live in their house, and the market value of their house. 
+
+Once we have this subset, we will begin by training a linear model on all of our observations without resampling. This is *usually a terrible idea.* It is going to cause us to overfit our model.
+
+```{r, comment = ""}
+
+restrictedHH <- imputedHH %>%
+  select(YRBUILT,
+         STORIES,
+         BUS.2,
+         BUS.3,
+         SUBWAY.2,
+         SUBWAY.3,
+         NUMPEOPLE,
+         MARKETVAL,
+         DIST)
+
+
+##################################################
+## Training a linear model on the whole dataset ##
+##################################################
+
+# N.B. This is a TERRIBLE idea; this is how you get overfitted
+# models. This is done for the sake of example
+
+whole_lm <- lm(DIST ~ .,
+               data = restrictedHH)
+summary(whole_lm)
+```
+
+From our output, we can see that 6/8 of our variables are supposedly highly significant in explaining commute distance. Our R^2^ value is only 0.033, meaning we explained 3% of the variation in the data with the model. However, this may not generalize if we want to use our model for prediction.
+
+## Using k-Folds Cross Validation
+
+The following code utilizes cross-validation to give a better indication of our model's predictive power. 
+
+```{r, warning = F, message = F, comment = ""}
+########################################
+## Accounting for overfitting with CV ##
+########################################
+
+lin_DIST_CV <- train(DIST ~ .,
+                  data = restrictedHH,
+                  method = "lm",
+                  trControl = trainControl(
+                    ## If we wanted to do repeated Cv, change
+                    ## this to:
+                    # method = "repeatedcv"
+                    method = "cv"
+                    
+                    ## If we wanted to change the number of 
+                    ##folds to some k-value:
+                    # number = [k]
+                    
+                    ## If we wanted to repeat the CV j times:
+                    # repeats = [j]
+                  ))
+
+summary(lin_DIST_CV)
+```
+
+Since our model already does such a poor job of explaining the variation, it is tough to see a substantial drop in performance. However, one can see that the R^2^ value is slightly lower since we have tried to account for overfitting. This suggests that our original model was only slightly overfitting the data.
+
+## Using Bootstraping
+
+The following code tries to account for overfitting but uses bootstrapping in place of k-folds cross validation:
+
+```{r, warning = F, message = F, comment = ""}
+###################################################
+## Accounting for overfitting with Bootstrapping ##
+###################################################
+
+lin_DIST_BOOT <- train(DIST ~ .,
+                  data = restrictedHH,
+                  method = "lm",
+                  trControl = trainControl(
+                    method = "boot",
+                    ## Indicating that we want to repeat our
+                    ## resampling 50 times
+                    number = 50
+                  ))
+
+summary(lin_DIST_BOOT)
+```
+
+Again, we see that our R^2^ is slightly smaller than our original model. Bootstrapping has helped account for overfitting. However, since our model is already explaining such little variation, the difference is minute.
+
+## Differences Between Methods
+
+There was very little difference between the impact of k-folds CV and Bootstrapping. Both produced an idential R^2^ value. However, both helped account for potentially being over optimistic about our model's fit.
+
+## Using `tuneLength = 1`
+
+This was not something I had to implement into my solutions since I used linear regression as my algorithm. 
+
+# 2. Testing two algorithms with Nested Cross-Validation
+
+What if we want to do nested cross-validation? The below code will do this to choose between random-forests and linear regression. Then it will test the model on the outer test-data.
+
+```{r, warning = F, message = F, eval = F}
+
+###########################################################
+## Partitioning our data into k-folds (in this case, 10) ##
+###########################################################
+
+outer_levels <- 10
+
+
+## This command generates a numeric vector for each row in a 
+## dataset. The value for each position corresponds to the
+## partition to which that observation was assigned
+
+## N.B. R decided to partition my data into 9 folds instead
+## of 10
+partitionedHH <- createFolds(restrictedHH$DIST,
+                             k = outer_levels,
+                             list = F)
+
+
+
+###########################
+## Picking and Assessing ##
+###########################
+
+## This loop trains two models on all of the data except for
+## the data contained within the partition of the current
+## iteration of the loop. Internally, it uses cv 10 times
+## to assess the model fit
+
+for(partition in 1:outer_levels){
+  lm_out <- train(DIST ~ .,
+                  restrictedHH[partitionedHH != partition, ],
+                  method = "lm",
+                  trControl = trainControl(
+                    method = "cv"
+                  ))
+  
+  tree_out <- train(DIST ~ .,
+              restrictedHH[partitionedHH != partition, ],
+              method = "ctree",
+              trControl = trainControl(
+                method = "cv"
+              ),
+              tuneLength = 1)
+  
+  ## If the linear model fits better...
+  if(lm_out$results$Rsquared > tree_out$results$Rsquared){
+    ## Train a linear model on the entire partition
+    mod_test <- train(DIST ~ .,
+                      restrictedHH[partitionedHH != partition, ],
+                      method = "lm",
+                      trControl = trainControl(
+                        method = "none"
+                      ))
+    
+    ## Then check its fit by comparing it to the values which were
+    ## excluded
+    eval <- cor(restrictedHH[partitionedHH == partition,
+                             "DIST"],
+                predict(
+                  mod_test,
+                  restrictedHH[partitionedHH == partition, ]
+                )) ** 2
+    
+    #################
+    ## log results ##
+    #################
+    
+    ## Make a table if this is the first iteration
+    ## Then record the method as lm and the R squared value
+    if(partition == 1){
+      results <- tibble(
+        method = "lm",
+        R_Sq = eval
+      )}else{
+        new_results <- tibble(
+          method = "lm",
+          R_Sq = eval
+        )
+        
+        results <- rbind(results,
+                         new_results)
+      }
+    
+  ## If the linear model does NOT fit better...
+  }else{
+    ## Conduct the same steps with the other model
+    mod_test <- train(DIST ~ .,
+                      restrictedHH[partitionedHH != partition, ],
+                      method = "ctree",
+                      trControl = trainControl(
+                        method = "none"
+                      ),
+                      tuneLength = 1)
+    
+    eval <- cor(restrictedHH[partitionedHH == partition,
+                             "DIST"],
+                predict(
+                  mod_test,
+                  restrictedHH[partitionedHH == partition, ]
+                )) ** 2
+    
+    if(partition == 1){
+      results <- tibble(
+        method = "ctree",
+        R_Sq = eval
+      )}else{
+        new_results <- tibble(
+          method = "ctree",
+          R_Sq = eval
+        )
+        
+        results <- rbind(results,
+                         new_results)
+    }
+  }
+}
+
+
+```
+
+Unfortunately, R is not providing me with the fit-metrics I need to evaluate the "ctree" algorithm. For some reason, it is telling me that there is no computed R^2^ value for the `ctree` model. I do not know why this is true (I will be asking about this in class/at office hours; unfortunately, this leaves me with some questions which will go unanswered for the time being).
