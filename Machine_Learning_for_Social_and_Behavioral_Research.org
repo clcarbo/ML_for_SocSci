@@ -515,6 +515,411 @@ method.select
     | Predicted Outcome | Positive       | TP           | FP ($\alpha$) |
     |                   | Negative       | FN ($\beta$) | TN            |
 
+*** Balanced Accuracy
+    <2019-09-19 Thu 09:30-10:45>
+    
+    This gives you the average across both classes.
+
+    |            | Actual |     |
+    | Prediction |    Yes |  No |
+    |------------+--------+-----|
+    | Yes        |     14 |   8 |
+    | No         |     39 | 170 |
+    
+    - For Yes: $14/(14+39) = 0.26$
+    - For No: $170/(170+8) = 0.955$
+    - Average = 0.61
+
+      [[./L_Pics/Sens_and_Spec.png]]
+
+*** Kappa
+    We can eyeball or use other statistics to compare Accuracy to the no information rate (1-prob(class 1)), but there are other statistics that measure our ability to predict beyond chance.
+
+    $$\text{Kappa} = \frac{O - E}{1 - E}$$
+
+    Where $O$ is the observed Accuracy and $E$ is the expected accuracy based on the marginal totals.
+
+    $$E =  \frac{(Predicted_{No}*Actual_{No})}{N^2} + \frac{(Predicted_{Yes}*Actual_{Yes})}{N^2}$$
+
+    Values > 0 mean an improvement above and beyond chance.
+
+*** Creating Cutoffs
+
+    If you don't specify, most programs will use a cutoff of 0.5. Which, in many cases, makes sense.
+
+    How about in our example? Our baserate is 0.22.
+
+** Probability Metrics
+
+*** Area Under the Curve
+    The area under the receiver operating characteristic curve (AUC) can be characterized as the probability that a randomly drawn positive case has a higher probability than a randomly drawn negative case (Fawcett, 2006).
+
+    [[./L_Pics/AUC1.png]]
+    
+    For this picture, the gradient is your selected cutoff rate for classifying outcomes. Sensitivity is how well it identifies positive cases. FPR is your false positive rate i.e. how frequently you erroneously predict a positive when it is negative.
+
+    An AUC of 1 means you have perfect specificity and sensitivity i.e. you always predict correctly. An AUC of 0.5 would mean you are doing the as well as random chance would e.g. a line from one corner to the other. Less than 0.5 means you are doing /worse/ than random chance.
+
+    Here's an example of the area under a curve for two models: Logistic and Random Forest. RF fits perfectly because there was no cross-validation.
+
+    [[./L_Pics/AUC2.png]]
+
+*** Problems with AUC
+    Class Imbalance is a major drawback (Saito \& Rehmsmeier, 2015)
+    - High imbalance will inflate the AUC
+
+   In the suicide example before, our AUC was 0.99 in most models.
+   - Even though we only found tiny effects
+
+   Also, need a test set to get actual curve.
+   - Can calculate as part of 5-fold
+
+*** PRAUC
+
+    Let's invert our approach: how well do we predict the positives?
+
+    [[./L_Pics/PRAUC.png]]
+    
+    Unlike AUC, there is no hard and fast value to look for e.g. 0.5 is equivalent to chance. PRAUC is all relative to other models.
+
+** Introduction to Regularization
+
+*** Variable Selection
+    Regression uses the predictors to estimate $b_j$ to maximize $R^2$. But this is within sample.
+
+    In some scenarios, removing predictors will improve our ability to accurately estimate $_TRS^2$.
+
+    Earlier we used CV and bootstrapping to create a better estimate of $_TRS^2$, now we want to use variable selection with CV/bootstrapping to maximize $_TRS^2$.
+
+*** Stepwise Methods: Best Subsets Selection
+
+    To perform best subsets selection our goal is to find the /optimal/ configuration of variables, testing /all/ possible configurations.
+
+    Number tested equals $2^k$, where $k$ is number of variables.
+
+    Possible configurations:
+		- 5 variables = 32
+		- 20 = 1,048,576
+		- 100 = 1.267651e+30
+
+    Point being? It can take a while. So we need heuristics.
+
+*** Backward Elimination
+
+    Backwards, start with the full model (all predictors).
+
+    In each step, remove the variable that lowers $R^2$ the least.
+
+    The key: What metric to use to choose a final model?
+
+*** Information Criteria
+    
+    Two really popular information criteria:
+
+    Bayesian Information Criteria (BIC; Schwarz, 1978)
+
+    $$BIC = N*log(RSS/N) + k*log(N)$$
+
+    Akaike Information Criteria (AIC; Akaike, 1973)
+
+    $$AIC = N*log(RSS/N) + 2k$$
+
+    Which is equivalent to Mallow's Cp in regression.
+
+    The lower the better. Both have similar idea to $R^2_{adj}$, but can also be used in non-nested models (but need same people).
+
+    E.g.
+
+    [[./L_Pics/Backwards.png]]
+
+*** Selecting Final Model
+    Pick the simplest model with the lowest BIC e.g. Intercept, C2, C3, E3, E4, N2, O2, gender.
+
+*** Holdout
+    In using stepwise selection, do not make inferences on the sample used to select variables! P-values are no longer valid. If you have a holdout, you can test the new subsetted model on the holdout and make inferences.
+
+    Thus, I re-run the model on the test set and can examine p-values. 
+
+    No test set = no p-values. Sorry
+
+*** Forward Stepwise Regression
+    Start with only an intercept, select the variable that has the largest correlation with Y (positive or negative).
+
+    Next, add variable that increase $R^2$ the most. etc... 
+
+    You can constrain it to have requirement that improvement is significant, but what do p-values mean anymore...
+
+    Applied to our example, we get the same results.
+
+*** A quote on stepwise methods:
+    "Stepwise variable selection has been a very popular technique for many years, but if this procedure had just been proposed as a statistical method, it would most likely be rejected because it violates every principle of statistical estimation and hypothesis testing." (Harrel, 2015, p. 67).
+
+*** Regularization
+    Stepwise methods are not necessarily deficient, it is that the procedure invites too many opportunities for abuse.
+
+    In contrast, we will discuss a number of methods under the umbrella of a method that is termed "regularization."
+
+    This is a family of methods designed specifically for when the number of predictors grows beyond just a few.
+
+*** Ridge Regression
+
+    Ordinary least squares can be represented as minimizing the residual sum of squares (RSS):
+
+    $$RSS = argmin\Big\{\sum_{i=1}^{N}(y_{i}-b_{0}-\sum_{j=1}^{p}x_{ij}b_{j})^{2}\Big\}$$
+
+    From this, we build a penalty term:
+
+    $$ridge=\underbrace{RSS}_{OLS}+\underbrace{\lambda\sum_{j=1}^{p}b_{j}^{2}}_{ridge}$$
+
+*** Lasso Regression
+    Specifically to /select/ variables, the least absolute shinkage and selection operator (lasso; Tibshirani, 1996, 2011) is:
+
+    $$lasso=\underbrace{RSS}_{OLS}+\underbrace{\lambda\sum_{j=1}^{p}|b_{j}|}_{lasso}$$
+
+*** Alternative Equation
+
+    $$lasso=\underbrace{RSS}_{OLS} \quad \text{subject to} \quad \sum |b_j| \le t$$
+
+    $$ridge=\underbrace{RSS}_{OLS} \quad \text{subject to} \quad \sum b_j^2 \le t$$
+
+    where $t$ is a tuning parameter similar to $\lambda$
+
+*** Example 1
+
+    [[./L_Pics/Reg_1.png]]
+
+*** Example 2
+
+    [[./L_Pics/Reg_2.png]]
+
+*** Parameter Trajectory
+
+    [[./L_Pics/Reg_3.png]]
+
+*** Collinearity
+    If I simulate two variables, $x_1$ and $x_2$, to both have $b_j$ of 1, but a correlation between them of 0.999, this is what occurs in linear regression.
+
+    [[./L_Pics/Reg_4.png]]
+
+*** Ridge for Collinearity
+    
+    |   | $\lambda$ |   x1 |   x2 |
+    |---+-----------+------+------|
+    | 1 |      0.00 | 1.44 | 0.15 |
+    | 2 |       0.1 | 1.15 | 0.44 |
+    | 3 |       0.2 | 1.04 | 0.55 |
+    | 4 |       0.3 | 0.98 | 0.60 |
+    | 5 |       1.0 | 0.86 | 0.72 |
+    
+    By penalizing both coefficients, it /shrinks/ the inflated coefficients and inflates the suppressed varaibles.
+
+    In general, no easy remedy for collinearity.
+
+*** Main Points
+
+    Ridge regression:
+    - Handles collinearity.
+
+    Lasso regresson: 
+    - Performs variable selection.
+
+    As a way to combine these, Zou and Hastie (2005) proposed the /elastic net/ (enet) regularization. Through the use of a mixing parameter, $\alpha$, the elastic net combines both ridge and lasso regularization
+
+    $$enet= \underbrace{RSS}_{OLS} + \underbrace{(1-\alpha)\lambda\sum_{j=1}^{p}\beta_{j}^{2}}_{ridge} + \underbrace{\alpha\lambda\sum_{j=1}^{p}|\beta_{j}|}_{lasso}$$
+
+*** Elastic Net Note
+
+    One drawback: generally not as sparse as the lasso
+    
+    Also, more computationally intensive.
+    - Could just test value of 0.5
+    - Or 0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1
+
+    Typically worth doing manually with ~train()~.
+    - glmnet won't test vector
+      
+*** Example Script from Prof. Jacobucci
+
+    #+begin_src R
+#ecls.1 = read.table('C:/Users/rjacobuc/Documents/GitHub/edm_book/ch5_trees/ecls_DM.dat', na='.');
+#ecls.1 = read.table('/Users/rjacobuc/Documents/GitHub/edm_book/ch5_trees/scripts/ecls_DM.dat', na='.');
+#ecls.1 = read.table('C:/Users/rjacobuc/Documents/GitHub/edm_book/ch5_trees/scripts/ecls_DM.dat', na='.');
+
+#library(synthpop)
+
+#ecls_syn <- syn(ecls.1)$syn
+#write.csv(ecls_syn,"G:/My Drive/PSY-ML-Fall19/4.Scripts/ecls_syn.csv")
+
+ecls_syn <- read.csv(file.choose())
+
+names(ecls_syn) = c('gender','kage',
+                  'k_read_irt','k_read1','k_read2','k_read3','k_read4',	
+                  'k_print','k_read_tht',
+                  'k_math_irt','k_math1','k_math2','k_math3','k_math4',
+                  'k_math_tht',
+                  'k_gk_irt','k_gk_tht',
+                  'f_mtr','g_mtr',
+                  'P1LEARN','P1CONTRO','P1SOCIAL','P1SADLON','P1IMPULS',	
+                  'ars_lit','ars_mth','ars_gk',
+                  'T1LEARN','T1CONTRO','T1INTERP','T1EXTERN','T1INTERN',	
+                  'height','weight','bmi',
+                  'hisp','na_amer','asian','black','pac_isl','white','m_race',
+                  'ses_c','ses_cat','poor','income',
+                  'g8_read','g8_read_tht','g8_math','g8_math_tht',
+                  'g8_sci','g8_sci_tht')
+
+# subset of variables
+x.vars = c('k_math_irt','k_gk_irt',"income","bmi","gender")
+set.seed(1)
+x.noise <- matrix( rnorm(nrow(ecls_syn)*20,mean=0,sd=1), nrow(ecls_syn), 20) 
+y.vars = 'g8_sci'
+ecls_syn$gender = ecls_syn$gender - 1
+XX <- data.matrix(cbind(ecls_syn[,x.vars],x.noise))
+XX.std <- data.matrix(cbind(scale(ecls_syn[,x.vars]),x.noise))
+YY <- as.numeric(scale(ecls_syn[,y.vars]))
+
+
+
+# linear regression
+dat.comb <- data.frame(YY,XX.std)
+lm.out <- 
+
+
+
+
+
+
+library(glmnet)
+# ?glmnet
+# return in original scale
+lasso.out <- glmnet(XX,YY,family="gaussian",alpha=1)
+plot(lasso.out)
+
+lasso.cv <- cv.glmnet(XX,YY,family="gaussian",alpha=1)
+plot(lasso.cv,size=2)
+
+round(coef(lasso.cv,lasso.cv$lambda.1se),3)
+round(coef(lasso.cv,lasso.cv$lambda.min),3)
+
+
+relax.out <- lm(scale(g8_sci) ~ scale(income) + scale(k_math_irt) + scale(k_gk_irt),ecls_syn)
+summary(relax.out)
+round(coef(relax.out),3)
+
+# ridge
+
+ridge.out <- glmnet(XX,YY,family="gaussian",alpha=0)
+plot(ridge.out)
+
+ridge.cv <- cv.glmnet(XX,YY,family="gaussian",alpha=0)
+plot(ridge.cv)
+round(coef(ridge.cv,ridge.cv$lambda.1se),3)
+
+
+#lasso.std <- glmnet(XX.std,YY,family="gaussian",alpha=1,intercept=F,standardize=F)
+#plot(lasso.std)
+
+# penalized package 
+#library(penalized)
+#fit1 <- penalized(YY, penalized=XX, unpenalized=~0, standardize=TRUE) 
+#round(coefficients(fit1),3)
+
+
+# lasso p-values
+
+library(covTest) # have to install from cran arxiv https://cran.r-project.org/src/contrib/Archive/covTest/
+a=lars.en(XX,YY,lambda2=0)
+cov.out = covTest(a,XX,YY)
+cov.out$results[1:4,1] # get predictor numbers
+
+head(XX[,c(2,1,3,5)])
+
+
+
+
+# hierarchical lasso
+set.seed(1)
+ids <- sample(1:nrow(XX.std),nrow(XX.std)*.5)
+XX.train <- XX.std[ids,]
+XX.test <- XX.std[-ids,]
+YY.train <- YY[ids]
+YY.test <- YY[-ids]
+
+library(hierNet)
+
+out = hierNet.path(XX.train,YY.train,strong=TRUE)
+out.cv = hierNet.cv(out,XX.train,YY.train)
+
+plot(out.cv)
+out.cv
+
+out$th[,,11] # interactions and quadratic effects
+out$bp[,11] # positive main effects
+out$bn[,11] # negative main effects
+
+# test if weak identifies others.
+out.weak = hierNet.path(XX.train,YY.train,strong=FALSE)
+out.cv.weak = hierNet.cv(out.weak,XX.train,YY.train)
+plot(out.cv.weak)
+out.cv.weak
+
+out.weak$th[,,11] # interactions
+out.weak$bp[,11]
+out.weak$bn[,11]
+
+
+# re-run model
+
+dat.comb <- data.frame(XX.test,YY.test)
+colnames(dat.comb)[1:5] <- c("math","knowledge","income","bmi","gender")
+colnames(dat.comb)[26] <- "science"
+
+lm.int <- lm(science ~ math + knowledge + income + bmi + gender + 
+               I(math^2) + I(knowledge^2) + I(income^2) + I(bmi^2) +
+               math*knowledge + knowledge*income,
+             dat.comb)
+summary(lm.int)
+stargazer::stargazer(lm.int,column.sep.width = "1pt",single.row = TRUE)
+
+
+
+
+# try stability selection
+
+# stability
+library(stabs)
+stab.out11 <- stabsel(XX,YY,cutoff=0.75,PFER=1)
+stab.out11
+    #+end_src
+
+** Regularization and Bias-Variance
+*** APE Exposure Data
+    [[./L_Pics/APE_Data.png]]
+*** 20th Order Polynomial
+    [[./L_Pics/Reg_5.png]]
+*** Random Forests
+    [[./L_Pics/Reg_6.png]]
+*** Bias vs. Variance
+    [[./L_Pics/Bias_v_Var.png]]
+*** Fit Decomposition
+    $$MSE = Bias^{2} + Variance$$
+
+    $$\mathop{\mathbb{E}} \left[ (y - \hat{f}(x))^2  \right] = \left(Bias[\hat{f}(x)] \right)^2 + Var[\hat{f}(x)] + \sigma^2$$
+
+    $$Bias[\hat{f}(x)] = \mathop{\mathbb{E}}[\hat{f}(x)] - \mathop{\mathbb{E}}[f(x)]$$
+
+    $$Variance[\hat{f}(x)] = \mathop{\mathbb{E}}[\hat{f}(x)^2] - \mathop{\mathbb{E}}[f(x)]^2$$
+
+    Its about decomposing the expected error on an unseen sample (population).
+
+    - Overly simple model = High Bias
+    - Overly complex model = High variance
+*** Decomposing
+
+    [[./L_Pics/Decomp.png]]
+*** Model Fit
+    [[./L_Pics/Model_Fit.png]]
+
 * Week 5: Regression (cont.)
 * Week 6: Trees
 * Week 7: Ensembles
