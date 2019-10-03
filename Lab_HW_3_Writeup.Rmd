@@ -1,0 +1,205 @@
+---
+title: "Lab HW 3 Writeup"
+author: "Christopher Carbonaro"
+date: "10/3/2019"
+output: pdf_document
+---
+
+```{r setup, include = F, echo = F, message = F}
+
+###########
+## SETUP ##
+###########
+
+knitr::opts_chunk$set(comment = "")
+
+## Set seed for consistent results
+set.seed(123)
+
+
+require(pacman)
+p_load(tidyverse,
+       caret,
+       psych,
+       mice,
+       glmnet)
+
+
+## Our factor variables are coded numerically in the data but they are
+## represented as strings. This helper function makes it easy to tell
+## R to read our factor variables in as factors while getting rid of 
+## the quotes around the levels (this makes things look cleaner when
+## turning them into dummy variables)
+numFacts <- function(x){
+  as_factor(x) %>%
+    as.numeric() %>%
+    as_factor()
+}
+
+
+## Load the data
+household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
+                      na = c("",
+                             "-6",
+                             "'-6'",
+                             "\"-6\""),
+                      quote = ""
+                      ) %>%
+  ## Remove replication weights and other "non-observational"
+  ## data points
+  filter(is.na(COMCOST) == F) %>%
+  select(-contains("repw"),
+         -starts_with("J"),
+         -CONTROL) %>%
+  mutate_if(is_character, numFacts)
+
+
+
+
+########################
+## Removing variables ##
+########################
+
+## Calculate which variables have nearZeroVariance
+NZV <- nearZeroVar(household)
+## Filter out those variables by omitting them from the columns selected
+household <- household[, -NZV]
+
+
+
+###########################################
+## Converting Factors to Dummy Variables ##
+###########################################
+
+## 1. Create a list of dummyvariable attributes
+recodedHH <- dummyVars(~ .,
+                       data = household,
+                       fullRank = T) %>%
+  ## 2. Create a matrix from this list
+  predict(newdata = household) %>%
+  ## 3. Convert it into a data frame (tibble)
+  as_tibble()
+
+## After creating new dummy variables, we have new variables with
+## near-zero variance. We need to eliminate these before trying
+## to call glmnet(), since scaling the data may give us NAs and
+## glmnet() will not be able to handle this.
+NZV <- nearZeroVar(recodedHH)
+recodedHH <- recodedHH[, -NZV]
+  
+###########################
+## Impute missing values ##
+###########################
+
+## !!!NOTE!!! The imputed values are the medians of each variable
+## This is PROBABLY NOT IDEAL! K-nearest-neighbor would be
+## better, but I think I would need to do dimension 
+## reduction
+imputedHH <- preProcess(recodedHH,
+                        method = "medianImpute") %>%
+  predict(newdata = recodedHH) %>%
+  as_tibble() %>%
+  filter(COMCOST != -9)
+```
+
+# 1. Using the `glmnet` Package
+
+## 1.1 Producing the plot of fit with `cv.glmnet` and the lasso
+
+```{r}
+###################################################
+## Running a Lasso to Perform Variable Selection ##
+###################################################
+
+comcost_lasso <- cv.glmnet(
+  x = data.matrix(scale(select(imputedHH,
+                               -COMCOST))),
+  y = imputedHH$COMCOST)
+
+plot(comcost_lasso)
+
+```
+
+## 1.2 What are the parameter estimates using the 1SE rule?
+
+Using the `coef()` function (we could also use `glmnet`'s specialized `coef.cv.glmnet()` function), we can generate the parameters for the model corresponding to the lambda which produces a mean square error which is one standard error from the minimum MSE. If we wanted the parameters for the model generated when lambda gives us the minimum MSE, we could just call `coef(comcost_lasso, s = "lambda.min")`. However, this could unnecessarily boost the complexity of our model.
+
+```{r, comment = ""}
+## Generating the model parameters (or coefficients) from the model
+lasso_params <- coef(comcost_lasso,
+                     s = "lambda.1se")
+
+## Print the sparse matrix
+print(lasso_params)
+```
+
+## 1.3 Using the Elastic Net
+
+```{r, comment = ""}
+############################################################
+## Performing Variable Selection but with the Elastic Net ##
+############################################################
+
+## Generate a model but use the elastic net i.e. incorporate the benefits
+## of both the lasso and ridge
+##
+## This is accomplished with the alpha parameter, which determines
+## the balance between the ridge and lasso penalty
+comcost_elastic <- cv.glmnet(
+  x = data.matrix(scale(select(imputedHH,
+                               -COMCOST))),
+  y = imputedHH$COMCOST,
+  alpha = 0.5)
+
+plot(comcost_elastic)
+
+
+## Generate the model parameters and print the sparse matrix
+elastic_params <- coef(comcost_elastic,
+                       s = "lambda.1se")
+print(elastic_params)
+```
+
+## 1.4 How do the Selected Variables Differ?
+```{r}
+summary(lasso_params)
+summary(elastic_params)
+```
+
+After examining the two summaries of the sparse matrices, we can see that the same variables were selected for both the elastic net and the lasso. This is likely attributable to 1. the large number of dummy variables which had little bearing on predicting the outcome and 2. the large number of observations (even after filtering out observations which had no recorded data for $Y$, we still had almost 14,000 cases). With fewer observations, I would expect the elastic net to be more lenient when selecting variables. However, we can see that the elastic net did have an impact on the magnitude of some of our coefficients. This is attributable to the effects of the ridge penalty.
+
+# 2. Comparing the Elastic Net with Linear or Logistic Regression
+
+## 2.1 Running `train()` with `method = glmnet`
+
+```{r}
+glmnet_train <- train(COMCOST ~ .,
+                      data = imputedHH,
+                      method = "glmnet",
+                      tuneLength = 1,
+                      trControl = trainControl(
+                        method = "cv"
+                      ))
+```
+
+## 2.2 Running `train()` with `method = glm`
+```{r}
+glm_train <- train(COMCOST ~ .,
+                   data = imputedHH,
+                   method = "glm",
+                   tuneLength = 1,
+                   trControl = trainControl(
+                     method = "cv"
+                   ))
+```
+
+## 2.3 Report the Best Fits from Each using 10-Fold Cross Validation
+```{r}
+glmnet_train$results %>%
+  knitr::kable(caption = "glmnet Results")
+
+glm_train$results %>%
+  knitr::kable(caption = "glm Results")
+```
+
+From the results, we can see that `glmnet` and `glm` gave us very similar R-Squared results. However, `glmnet` gives us a more parsimonious model. Again, the similarities in outcome here are likely attributable to the large number of observations; as we have discussed in class, more data beats better algorithms.

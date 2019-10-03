@@ -919,8 +919,156 @@ stab.out11
     [[./L_Pics/Decomp.png]]
 *** Model Fit
     [[./L_Pics/Model_Fit.png]]
+*** OLS vs. Regularization
+
+    Simulate data acording to a linear regression -- run model on sample size of 40.
+    [[./L_Pics/OLS_v_Reg.png]]
+*** Sample Size
+
+    The Bias-Variance Tradeoff is typically discussed with a fixed N.
+
+    As sample size decreases, variance of fixed model will increase.
+    - Less information to model
+    - Conclude simpler model with fit better
+*** Regularization and Sample Size
+
+    [[./L_Pics/Reg_and_Samp.png]]
+
+*** Sample Size Continued
+
+    Example evaluated on test set.
+    - Why more data can beat better algorithms
+
+    [[./L_Pics/Samp_Size.png]]
+    
+*** Conceptual Quiz
+
+    What are the bias and variance properties of the following algorithms. Detail what data generating scenarios for which this holds:
+
+    - 20th degree polynomial vs linear regression
+    - Linear Regression vs. ridge regression
+
+*** Big Picture Takeaways
+    Why are we bothering with this?
+    - We can't see bias or variance, so we need to consider this before throwing algorithms at data. Otherwise, you have a recipe for poor prediction/capturing of trends.
+
+    When to prefer bias?
+    - When you have few observations e.g. less than 1000
+    - When you want to eliminate variables
+
+    When to prefer variance?
+    - If you have a lot of observations
 
 * Week 5: Regression (cont.)
+
+** Regularization: Advanced Methods
+   <2019-10-01 Tue 09:30-10:45>
+
+*** Lasso P-values
+
+    Simply put: researchers like p-values. With the lasso, it is not recommended to do:
+    - bootstrap within the algorithm to get p-values
+    - assess p-values in a follow-up step
+
+    Lockhart, Taylor, Tibshirani, and Tibshirani (2014) proposed a new distribution for the test statistic.
+    - implemented in ~selectiveInference~ package (this was the ~covTest~ package previously)
+      
+    In this, use p-value for selection, not whether non-zero.
+
+*** Stability - Variable Selection and Stability
+    Variable slection is inherently unstable. Two factors that play a large role:
+    1. Sample size
+    2. Signal in predictors
+       
+    If you have small effects among your predictors, you are going to have problems with stability. More specifically, sometimes the lasso will select a variable as being non-zero, and sometimes it will not. This is not unique to the lasso; the same problem exists for other methods.
+
+*** Stability Selection
+
+    As opposed to just bootstrapping the variable selection process, Stability Selection (Meinshausen & Buhlmann, 2010) developed a more formal process. It involves:
+    - Taking at least 100 bootstrap samples (or subsamples) for each penalty
+    - Selecting a subset of the penalty range to asses selection probabilities for each predictor
+    - Range of penalites is based on eseeting a false positive error rate
+      
+    N.B. you will set your own threshold. 0.8 or 0.9 are generally pretty good standards.
+
+    [[./L_Pics/Ad_Reg_2.png]]
+
+    [[./L_Pics/Ad_Reg_1.png]]
+
+*** Moderation Analysis
+    Consider a model
+    $$Y_i = b_0 + b_XX_{i} + b_ZZ_{i} + \epsilon_i$$ where $Z$ is a potential moderator. To determine whether  $Z$ moderates the effect of $X$ on $Y$ we can fit $$Y_i = b_0 + b_XX_{i} + b_ZZ_{i} + b_{XZ}X_iZ_{i} + \epsilon_i$$ and test the hypothesis that $$b_{XZ}=0$$
+
+    If $$b_{XZ} \neq 0$$, we can claim that $Z$ moderates the relationship between $X$ and $Y$.
+
+    Equivalently, we can say that there is an /interaction/ between $X$ and $Y$ or that the relationship between $X$ and $Y$ is conditional on $Z$.
+
+*** Parameter Interpretation
+
+    $$Y_i = b_0 + b_X(X_{i}-\bar{X}) + b_Z(Z_{i}-\bar{Z}) + b_{XZ}(X_{i}-\bar{X})(Z_{i}-\bar{Z}) + \epsilon_i$$
+
+    [[./L_Pics/Ad_Reg_3.png]]
+
+    [[./L_Pics/Ad_Reg_4.png]]
+
+*** Searching for Interactions
+
+    A number of methods have been developed for high-dimensional selection of interactions: (Bien, Taylor, & Tibshirani, 2013; Choi,Li, & Zhu, 2010; Haris, Witten, & Simon, 2016).
+
+    $$Y=\beta_{0}+\sum_{j}\beta_{j}X_{j}+.5\sum_{j\neq k}\Theta_{jk}X_{j}X_{k}+\epsilon$$
+
+    $\Theta_{jk}$ is a matrix assessing every possible interaction between variables. 
+
+    In R, there are the ~hierNet~ and ~FAMILY~ packages. Both are slow. 
+
+    Have to choose an assumption to follow:
+    Strong hierarchy -- Only test interactions if both variables have simple effects.
+    Weak hierarchy -- Have to have one non-zero simple effect.
+
+    N.B. Quadratic effects can be masked by interactions and vice versa.
+
+*** Example Results
+
+    [[./L_Pics/Ad_Reg_5.png]]
+
+*** Hierarchical Testing
+
+    When we have /sets/ of predictors, we are often interested in knowing whether the whole set is related to the outcome.
+
+    Note that this should be technically called /Hierarchical testing/, /analysis/, or /entry/ to differentiate from Hierarchical/Multilvel/Mixed models.
+
+    This form of testing represents a /confirmatory/ analysis. The steps are determine /a priori/. 
+
+    What variables and in what steps/order is determined theoretically. This method can be tailored to fit what is of theoretical interest to you.
+
+*** Example Hypothesis
+
+    I hypothesize that conscientiousness will predict agreeableness even after controlling for demographic variables. 
+
+    Model 1: $ agree = b_0 + A*demo$
+    Model 2: $agree = b_0 + A*demo + B*conscientiousness$
+
+*** Additional Example
+
+    I wish to test the following sequence
+
+    Model 1: $agree = b_0 + A*demo$
+    Model 2: $agree = b_0 + A*demo + B*consc$
+    Model 3: $agree = b_0 + A*demo + B*consc + C*open$
+    Model 4: $agree = b_0 + A*demo + B*con + C*open + D*neur$
+
+    Which produces the following relationship:
+
+    $R^2(Model 4) = \Delta R^2(Model 4) + \Delta R^2(Model 3) + \Delta R^2(Model 2) + R^2(Model 1)$
+    
+*** Selecting Among Groups
+
+    For a scenario where the numbers of variables preclude strong theoretical specification, Yuan and Lin (2007) proposed the group lasso
+
+    $$grplasso=argmin\Big\{\sum_{i=1}^{N}(y_{i}-\beta_{0}-\sum_{j=1}^{p}x_{ij}\beta_{j})^{2}+\lambda\sum_{g=1}^{G}\sqrt{p_{g}}\|\beta_{g}\|_{2}\Big\}$$
+
+    where $p_{g}$ accounts for the varying sizes of groups and $\beta_{g}$ is the vector of all $\beta$ coefficients in group $g$. In the group lasso, the lasso penalty acts at the group level, where instead of individual parameters are set to zero, entire groups of parameters can be pushed to zero.
+
 * Week 6: Trees
 * Week 7: Ensembles
 * Week 8: Ensembles (cont.) and Project Proposals
