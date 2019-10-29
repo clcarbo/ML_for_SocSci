@@ -11,11 +11,12 @@
   <2019-08-27 Tue 09:20-10:45>
 
 ** TODO Reading and reflections                                    :Readings:
-   DEADLINE: <2019-09-19 Thu +1w>
+   DEADLINE: <2019-10-24 Thu +1w>
    :PROPERTIES:
-   :LAST_REPEAT: [2019-09-12 Thu 10:29]
+   :LAST_REPEAT: [2019-10-10 Thu 10:29]
    :END:
 
+   - State "DONE"       from "TODO"       [2019-10-10 Thu 10:29]
    - State "DONE"       from "TODO"       [2019-09-12 Thu 10:29]
    - State "DONE"       from "TODO"       [2019-09-04 Wed 23:44]
 ** Machine Learning Terminology
@@ -138,6 +139,8 @@
     Better prespective: These new forms of assessment will /supplement/ traditional forms.
 
     The same is true for ML vs Statistics -- ML can supplement our traditional approaches.
+** TODO Final Project Proposal
+   DEADLINE: <2019-11-05 Tue 23:59>
 * Week 2: Theory and ML
   <2019-09-03 Tue 09:30-10:45> 
 ** Exploratory and Confirmatory Research
@@ -459,7 +462,7 @@ method.select
 
    Not available for most ML algorithms and only useful in a relative sense. They must compute a log likelihood ($ln(\text{likelihood})$).
 
-** TODO Homework Assignment 2
+** DONE Homework Assignment 2
    DEADLINE: <2019-09-19 Thu 09:30>
 * Week 4: Regression
 ** Classification Metrics
@@ -960,7 +963,6 @@ stab.out11
     - If you have a lot of observations
 
 * Week 5: Regression (cont.)
-
 ** Regularization: Advanced Methods
    <2019-10-01 Tue 09:30-10:45>
 
@@ -1068,12 +1070,449 @@ stab.out11
     $$grplasso=argmin\Big\{\sum_{i=1}^{N}(y_{i}-\beta_{0}-\sum_{j=1}^{p}x_{ij}\beta_{j})^{2}+\lambda\sum_{g=1}^{G}\sqrt{p_{g}}\|\beta_{g}\|_{2}\Big\}$$
 
     where $p_{g}$ accounts for the varying sizes of groups and $\beta_{g}$ is the vector of all $\beta$ coefficients in group $g$. In the group lasso, the lasso penalty acts at the group level, where instead of individual parameters are set to zero, entire groups of parameters can be pushed to zero.
-
+** DONE Homework Assignment 3
+   DEADLINE: <2019-10-03 Thu 09:30>
 * Week 6: Trees
+** Decision Trees
+   <2019-10-03 Thu 09:30-10:45>
+*** Intro
+    Decision Trees (DT) were first introduced in the 1960's by Morgan and Sonquist (1963). However, the use of the method did not capture the attention of the statistics community until 20 years later with the work of Breiman, Friedman, Olshen, and Stone (1984).
+
+    Also referred to as:
+    - Recursive partitioning
+    - CART
+    - Classification and regression trees
+*** Algorithm Overview
+    First, divide the predictor space into all possible unique values. Across these unique predictor values, the algorithm iteratively partitions the dataset to determine an improvement in model fit. This involves placing each observation into one of two groups, of which, each group member receives the same predicted response.
+
+    Given /m/ unique sorted values, this involves testing /m-1/ unique splits. For nominal variables, as there is no ordering to the values, all possible groupings are tested. If there are /m/ categories, this involves testing 2^{m-1}-1 dichotomous splits.
+
+    For continuous outcomes, this is generally mean squared error. For categorical, it can be accuracy or two alternatives such as entropy or the gini index.
+
+    It then checks each new group and sees if it can improve the fit by splitting the data further.
+*** Example Tree
+    [[./L_Pics/D_Tree_1.png]]
+    
+    Each split is created by testing each predictor variable and checking every internal partition within that variable to improve the fit. In other words, splitting the "worthless" variable at 0.5 is the /best/ way of reducing the error for the first data split.
+*** Terminology
+    [[./L_Pics/D_Tree_2.png]]
+*** Prediction Line (or, relationship between 1 predictor and 1 outcome)
+    [[./L_Pics/D_Tree_3.png]]
+*** Prediction Surfaces (or, 2 predictors for 1 outcome)
+    [[./L_Pics/D_Tree_4.png]]
+*** Interactions
+    [[./L_Pics/D_Tree_5.png]]
+** Decision Trees II
+   <2019-10-08 Tue 09:30-10:45>
+*** Algorithms
+    The term DT often refers to the use of classification and regression trees. It denotes the overarching methodology. Classification and Regression Trees (CART; Breiman et al., 1984) refers to a specific algorithm that falls under the umbrella of DT.
+
+    Two different packages implement variants
+    - rpart
+    - tree
+
+    Often time this tree structure fits the data too well (overfits), meaning that parts of the tree structure are unlikely to generalize well to alternative samples. One strategy to overcome this prpoensity is to _prune_ the initial tree back to a smaller size.
+*** Pruning
+    In choosing a final model, it is common to build a large tree and then prune back the tree to select a sub-tree i.e. a smaller version the tree that minimizes the cross-validation error. This is done in order to prevent "missing" an important additional split (see Breiman, Friedman, Olshen, and Stone, 1984).
+
+    In practice, pruning involves testing multiple tuning parameters that control the size of the tree, using CV to select among these. Conversely, we can create a tree without attempting to control the size of it, the proceed to _prune_ back the leaves to create a series of submodels/subtrees. Both typically result in the same tree.
+
+*** Cost Complexity
+
+    The cost complexity measure is:
+
+    $$R_{\alpha}(T_{p})=R(T_{p})+\alpha s_{p}$$
+
+    where $R(T_{p})$ is the error, and $s_{p}$is the number of leaves (terminal nodes) for tree $T_{p}$(Breiman et al., 1984). When $\alpha$ is zero, then we have the original tree structure.
+
+    What does this look similar to? Regularization. This is the same thing but for decision trees.
+
+*** Example Results
+    | CP | Splits | Sample Error | Avg. CV Error | CV Error Std. |
+    |----+--------+--------------+---------------+---------------|
+    |  1 |      0 |            1 |             1 |          0.03 |
+    |  2 |      1 |         0.83 |          0.83 |          0.03 |
+    |  3 |      3 |         0.77 |          0.84 |          0.03 |
+    |  4 |      5 |         0.74 |          0.82 |          0.03 |
+    |  5 |      6 |         0.73 |          0.83 |          0.03 |
+
+    Table 1: Table of complexity parameters and fit from Example 1.
+    
+    Note: there are big benefits to having small trees e.g. stability. But... readers may not trust your results. They may assume that they are not receiving all of the information. It's up to you to decide what to report.
+
+*** Example cont.
+
+    To demonstrate this process we can use the ECLS-K data. This time, we predict reading achievement in grade 8. The sample was split into both a train and test set. For each tree, we recorded the fit on the train set, the average fit across the 10 folds, and on the test set.
+
+    [[./L_Pics/D_Tree_6.png]]
+
+*** Conditional Inference Trees
+
+    Conditional Inference Trees (Ctree; Hothorn , hornik, & Zeileis, 2006) are based on a general theory of permutation tests, performing a hypothesis test at each node resulting in a p-value criterion to test whether the tree should stop or keep growing. Using a perutation test to calculate a p-value entails comparing a split on the original sample to using that same split on randomly shuffled response values (e.g. swapping observation 1's and 2's response).
+
+    This overcomes a well known problem with CART (Kin & Loh, 2001). It does not control for the number of response options.
+
+*** Partykit package
+
+    The algorithm is iimplemented as the ~ctree~ function in the ~partykit~ package (Hothorn & Zeileis, 2015). The default for the p-value criterion is 0.05 (expressed as 0.95, or 1-p).
+
+    Can use in ~train()~ with ~method="ctree"~ . Using the default tuning parameters (3) is pretty reasonable, while when using ~method = "rpart"~, its best to test 20-30 or so.
+
+*** Stability
+    
+    Example:
+
+    To make the concept more concrete, we will use the ~Holzinger-Swineford~ dataset from the ~lavaan~ package (Rosseel, 2012). With this dataset, we created three trees using the ~rpart~ package, one on the first 100 respondents, one of the second 300 respondents, and finally on the entire sample (N=301). The resulting tree structures for each are randomly different but they seem to reduce our error by commesurate levels.
+
+    [[./L_Pics/D_Tree_7.png]]
+
+    Adding backward selection to choose which variables should be in the model (usiing the Akaike Information Criterion to choose a final model), we get additional uncertainty. In the first sample, variables x4 and x5 are chose in the second sample x3, x4, and x6, while in the full sample x2 and x4.
+
+    Unsurprisingly, small trees are more stable. However, this comes at the cost of prediction quality and inference. Similar concept to bias and variance, except here there is high variability to the interpretation when bias is low.
+
+*** Measuring Stability
+
+    If inference is of high priority, it is worth quantifying how unstable a tree is.
+
+    The easiest solution is using 100 bootstrap samples to see how often the same tree is created.
+
+    The is made relatively easy with the ~dtree~ package.
+
+    |       | nodes       | nvar | nsplits | RMSE CV | $R^2 CV$ |
+    |-------+-------------+------+---------+---------+----------|
+    | lm    | -           |    - |       - |   11.75 |     0.37 |
+    | rpart | 15.42 (4.4) | 2.00 |   14.42 |   11.51 |     0.39 |
+    | ctree | 22.67 (9.4) | 2.00 |   21.67 |   11.48 |     0.40 |
+
+*** Additional Information: Surrogate Splits
+
+    Two options for handling missingness in trees:
+    - Multiple imputation
+    - Surrogate splits
+
+    Surrogate splits work in the following way: after a primary split is found for a given node, surrogate splits can be found by re-applying the partitioning algorithm to predict the binary primary split. For example, if the primary split is on education between less than or equal to 12 years and greater than 12, then this new binary variable becomes the outcome, with the remaining variables used as predictors.
+
+*** Variable Importance
+
+    Similar to that of linear regression, having high correlations among covariates presents problems for DT. In the tree building algorithm, at a given split two gollinear variables may produce almost idential improvements in fit, but only one can be chosen for a given split. This is analogous to the idea of masking, but in the case of DT, it results in one of the variables either not being split on at all, or lower in the tree. To quanitfy how influential a variable is in predicting the outcome variable, one can also calculate the varaible importance metric for a given tree.
+
+    Add collinear variable messes up the tree, but variable importance were as follows: 39 for math, 33 for knowledge, and 28 for the simulated math score.
+
+*** Summary
+
+**** Advantages:
+
+     - Are robust to outliers - single misclassifications don't largely influence the splitting.
+     - Perform variable selection
+     - Genrally result in easy to interpret tree structures
+     - Automatically include interaction 
+
+**** Disadvantages:
+     - Instability
+     - Collinearity presents problems
+     - Relatively lower predictive performance
+
+*** DONE Homework Assignment 4
+
+** Tree Recap
+*** Surrogate Splits
+    What are they?
+    - First, we produce a split for a node. What happens if our predictor is missing values? We can check all variables to see what variable is the best predictor of the original predictor. For example, say our original variable is ~MATH~. However, we are missing values. But of our predictors, ~IQ~ serves as the best predictor of ~MATH~. So for our missing ~MATH~ values, we check how we split our observations if we had split based on ~IQ~ and then put individuals in each category into the original groups for ~MATH~ i.e. if our outccomes are 0 and 1, anyone predicted to be a 0 for ~IQ~ is put into the predicted 0 node for ~MATH~.
 * Week 7: Ensembles
+** Bagging
+   <2019-10-10 Thu 09:30-10:45>
+*** Downfalls to Decision Trees
+
+    We've already discussed some of the drawbacks to decision trees, namely:
+    - Poor predictive performance
+    - Instability in structure
+    - Bias in variable selection (CART)
+
+    Here, we are going to discuss one of the main algorithms proposed to overcome these problems: random forests. Prior to discussing RF, we will look at bagging, a precursor.
+
+*** Bagging Overview
+
+    One of the first methdos proposed to overcome the limitations of decision trees is bootstrap aggregating, or bagging (Breiman, 1996).
+
+    The algorithm proceeds in two steps. First, a bootstrap sample is taken. Then for each bootstrap sample, fit a tree model using all predictors. Given that each bootstrap sample is different, each tree will tend to have a unique structure as well, capitalizing in the instability of decision trees, manifested in either the variables used, splitting values, or tree size.
+
+*** Bagging Predictions
+
+   $$\hat{f}_{bag}(x)=\frac{1}{B}\sum_{b=1}^{B}\hat{f}^{*b}(x)$$ 
+
+   ... where our predictions $\hat{f}_{bag}(x)$ are take as the average predictions across each tree $\hat{f}^{*b}(x)$ for B number of trees created, with B being approximately 500. In the case of a categorical outcome, we can use majority vote across the trees.
+
+   By averaging the prediction across 100s of trees, we reduce the variance.
+
+*** Example
+
+    Using the PHE Exposure data, we start with a single tree.
+
+    1 Tree:
+    [[./L_Pics/RF_1.png]]
+   
+    5 Bagged Trees:
+    [[./L_Pics/RF_2.png]]
+    
+    2000 Bagged Trees:
+    [[./L_Pics/RF_3.png]]
+
+*** Testing Different Numbers of Trees
+
+    Using the same example, we can see how our predictive performance changes across an increasing number of trees.
+
+    [[./L_Pics/RF_4.png]]
+    
+*** Drawbacks to Bagging
+
+    When using the same set of predictors to create each of the trees, many of the trees will be overly similar (or the same), resulting in a limited search of the prediction space. Bagging reduces the variance of individual trees, but the bias is approximately the same since the same trees are used. Put more concisely, the trees from bagging typically have high correlations.
+
+    Random forests was proposed ot keep the low variance of bagging, but further reduce the bias by de-correlating the trees. This is achieved by randomly selecting a subset of the variables for the creation of each tree.
+
+** Random Forests
+*** Algorithm
+    
+    *for* b = 1 to B *do*
+    1. Draw a boostrap sample of size N from training data
+    2. Grow a decision tree $T_b$ on the bootstrap sample using $m$ variables
+    *end*
+    *Result:* Output the ensemples of trees $\{T_B\}^B_1$
+    
+    To create predictions:
+
+    $$\hat{f}_{rf}^{B}(x)=\frac{1}{B}\sum_{b=1}^{B}T_{b}(x)$$
+    
+    Note that some versions of random forests use subsamples to create trees, not boostrap samples.
+
+*** ~mtry~
+
+    ~mtry~, or the number of randomly selected variables for creating each tree, is the main tuning parameter in random forests. You can vary the number of trees, but it typically doesn't matter for prediction (different for variable importance).
+
+    Default values in most programs:
+    - Classification is $sqrt{p}$
+    - Regression is $p/3$
+
+*** Out of Bag Samples
+
+    When using bootstrap samples, can use of the out of bag (OOB) samples to create samples. Then, average predictions for each observation just in those trees in which they were used (e.g., (1-.632)*B number of trees).
+
+    Using OOB prediction performance approximates the use of k-fold pretty well. However, it is more common to just use k-fold.
+
+*** Compared to Bagging
+
+    [[./L_Pics/RF_5.png]]
+    
+    Random forests are, by nature, much more likely to overfit your data.
+
 * Week 8: Ensembles (cont.) and Project Proposals
+** Random Forests (cont.)
+   <2019-10-17 Thu 09:30-10:45>
+*** Variable Importance
+    Why not just univariate assessment?
+    
+    Assessing the importance of all predictors in the same model, as opposed to using univariate models, can capture the multivariable \textbf{interactions}.
+    
+    Particularly when predictors are correlated, the multivariable assessment can result in different inference than univariate.
+
+    Multivariable assessments can also remove spurious effects in a univariate model -- a variable associated with the outcome only because of its relation to a different predictor.
+
+*** Variable Importance in a Single Tree
+    
+    From Breiman et al. (1984)
+
+    $$I_{l}^{2}(T) = \sum_{t=1}^{J-1}\hat{i}_{t}^{2}I(v(t)=l)$$
+
+    ... for each predictor $X_l$, $J-1$ internal nodes, each node $t$, and $\hat{i}_{t}^{2}$ is a measure of error improvement.
+
+    Taking the square root gives an importance value for each predictor. 
+
+    What are the issues with this?
+    - This only gives non-zero values for variables that were used in the tree. If it wasn't used in the tree, you don't have an accurate measurement of importance.
+    - ~rpart~ gets around this by using surrogate splits to approximate this.
+
+*** Variable Importance Across Trees
+    In both boosting and random forests, can alter this to:
+
+    $$I_{l}^{2} = \frac{1}{M}\sum_{m=1}^{M}I^{2}_{l}(T_m)$$
+
+    ...where M is the number of trees.
+
+    Key point: this is relative, so common to assign largest value to 100 then scales each accordingly.
+
+*** Permutation Tests
+
+    From Strobl et al. (2008): "that a random permutation of the values of the predictor variable is supposed to mimic the absence of the variable from the model."
+
+    This form of VI was proposed in Breiman (2001): Using the out of bag samples (OOB), for the Mth tree grown, pass the OOB samples down the tree, and record the prediction performance. Then, for the $lth$ variable, permute the values and pass down the new OOB sample data, and record the prediction performance. In contrast to CTree permutation, this is change the actual values of X.
+
+*** Problems with RF VI
+
+    The way of permuting X values in RF can be referred to as a marginal approach. This has been found to bias VI values in favor of predictors that are correlated. As a result, Strobl et al. (2008) developed a conditional approach. 
+
+    For the permutation, add this: "For all variables Z to be conditioned on: Extract the cutpoints that split this variable in the current tree and create a grid by means of bisecting the sample space in each cutpoint."
+
+    Then calculate OOB VI of X *within* each point in the grid.
+
+*** Random Forest Example
+
+    The randomForest package, method="rf", by default uses the permutation test on the OOB approach. Using the ECLS-K data and 100 trees:
+
+		|           |     RF | Rpart |
+		|-----------+--------+-------|
+		| math      |  17.29 |    13 |
+		| knowledge |  28.14 |    13 |
+		| weight    |   1.37 |     0 |
+		| height    |   0.00 |     0 |
+		| income    |  10.95 |     6 |
+		| ses       |  10.94 |     8 |
+		| read      | 100.00 |    61 |
+
+*** cforest example
+
+    From the partykit package:
+
+    		|           |    CF |
+    		|-----------+-------|
+    		| math      |  8.81 |
+    		| knowledge |  9.98 |
+    		| weight    |  0.17 |
+    		| height    |  0.27 |
+    		| income    |  2.09 |
+    		| ses       |  2.46 |
+    		| read      | 97.08 |
+
+*** Number of Trees
+
+    For prediction, as long as the number of predictors is small, the number of trees typically doesn't matter. 
+
+    However, for calculating VI, a higher number may be better so there isn't instability to VI.
+
+*** Visualizing the Effects of X
+
+    The idea behind partial dependence plots is to visualize the effect of a variable in a "black box" type algorithm. 
+
+    Broadly speaking, this is examining the effect of $X_1$ on $Y$, after accounting for the average effects of $X_C$. This approach, developed by Friedman (2001) allows for the visualization of interactions and nonlinear effects.
+
+    These are descriptive approximations, not "true" derived relationships.
+
+*** Reading
+
+    Using Random Forests and reading as a predictor:
+
+    [[./L_Pics/RF_6.png]]
+
+*** Math
+
+    Using Random Forests and math as a predictor:
+
+    [[./L_Pics/RF_7.png]]
+
+*** Using Two Predictors
+
+    [[./L_Pics/RF_8.png]]
+
+*** Another Way
+
+    [[./L_Pics/RF_9.png]]
+
 * Week 9: No Class (Fall Break)
 * Week 10: Ensembles (cont.)
+** Boosting
+   <2019-10-29 Tue 09:30-10:45>
+*** Introduction
+   Similar to random forests, boosting is a method that combines the
+   use of hundreds (or thousands) individual decision trees in an attempt
+   to overcome some of the problems with single trees. However, in contrast
+   to random forests, where each individual tree is created independently
+   of every other, boosting creates a sequence of trees based on re-weighted
+   forms of the dataset. 
+
+   Developed originally for classification in the
+   form of the AdaBoost algorithm (Freund & Schapire, 1995; 1996; 1997),
+   the idea behind the algorithm has been extended to many other statistical
+   problems (see Buhlmann & Hothorn, 2007 for more detail). Most notably,
+   Friedman, Hastie, and Tibshirani (2000), as well as Friedman (2001),
+   developed a highly adaptable algorithms that can be applied to a host
+   of different loss functions, as well as extended to multivariate outcomes.
+*** Algorithm
+
+    The basic idea of this algorithmic framework, originally termed “gradient boosting machines” by Friedman (2001), now more frequently just called “boosting,” is to fit an additive combination of what is termed a “weak learner,” most often a decision tree (weak in the sense that its predictive performance is usually substandard), to the gradient (residuals) of the prior combination of weak learners. More formally, the algorithm is described by:
+
+    [[./L_Pics/Boosting_1.png]]
+
+*** Learning Slowly
+    
+    This algorithm creates a large sequence of try by continually fitting trees to each current vector of residuals. By shrinking the influence of each tree, and thus how much the residuals are updated, overfitting can be prevented, better known as the process of learning slowly. This is facilitated by the use of the shrinkage parameter (learning rate; $\lambda$), which is usually treating as a tuning parameter, with typically values ranging from 0.001 to 0.1. The smaller the value of $\lambda$, the more trees that could be needed to adequatly fit the data
+
+*** Training Error
+
+    [[./L_Pics/Boosting_2.png]]
+
+*** CV Error
+
+    [[./L_Pics/Boosting_3.png]]
+    
+*** Number of Trees
+
+    Partially depends on sample size -- smaller = less trees.
+
+    Interaction between learning rate and number of trees -- why testing grid is important. 
+
+    Also, more predictors, need more trees. Somewhere around 500-1000 is typical.
+
+*** Tree Complexity
+
+    The tree depth (complexity) should reflect the order of possible interaction in the data. 
+
+    In social and behavioral research, doubtful to have greater than order 3, however, may be worth testing 5. 
+
+    This means worth testing a depth of: 1 (stump; just main effects; nonlinear effects), 2 can capture interactions, and 3 (higher-order interactions). 
+
+*** Deductive Data Mining
+
+    We developed a method termed deductive data mining: https://osf.io/preprints/bmwah/
+
+    Idea is similar to the Elith et al. paper, use the information from interaction depth to follow up with manual interactions and quadratic effects. 
+
+*** Algorithms
+    
+    Traditional gradient boosting, implemented in the gbm package, is by far the most popular algorithm. In caret, method = "gbm".  
+
+    A newer algorithm, termed extreme gradient boosting (Xgboost; Chen & Guestrin, 2016) typically has better predictive performance, but the variable importance calculation is a little weird. Implemented in caret as method="xgbTree". 
+
+*** ~gbm~ Package
+
+    gbm has four tuning parameters:
+    - number of trees (n.trees)
+    - max tree depth (interaction.depth)
+    - shrinkage (shrinkage)
+    - min. terminal node size (n.minobsinnode)
+
+    In comparison to random forests, boosting takes more tuning. It is worth doing a first run, and then based on results, alter tuning values. 
+
+    Note -- this will also take longer than RF. 
+
+*** Tuning Example
+
+    [[./L_Pics/Boosting_4.png]]
+
+*** Partial Dependence Plots
+
+    Using the ~dismo~ package has additional functionality. One is auto partial dependence plots:
+
+    [[./L_Pics/Boosting_5.png]]
+
+    [[./L_Pics/Boosting_6.png]]
+
+*** Summary
+
+    Gradient boosting with trees is one of the most popular machine learning algorithms. A number of details worth noting when deciding between RF and boosting:
+    - boosting often takes longer
+    - boosting requires testing more tuning parameters
+    - boosting allows for evaluating interactions
+    - both can utilize partial dependence plots
+    - random forests has been evaluated further with variable importance
+
 * Week 11: Nonlinear methods
 * Week 12: Measurment and ML
 * Week 13: Searching for Groups

@@ -1,0 +1,207 @@
+---
+title: "Lab HW 4 Writeup"
+author: "Christopher Carbonaro"
+date: "10/10/2019"
+output: pdf_document
+---
+
+```{r setup, include = F, echo = F, message = F}
+
+###########
+## SETUP ##
+###########
+
+knitr::opts_chunk$set(comment = "",
+                      warning = F)
+
+## Set seed for consistent results
+set.seed(123)
+
+
+require(pacman)
+p_load(tidyverse,
+       caret,
+       psych,
+       mice,
+       glmnet,
+       partykit,
+       party)
+
+
+## Our factor variables are coded numerically in the data but they are
+## represented as strings. This helper function makes it easy to tell
+## R to read our factor variables in as factors while getting rid of 
+## the quotes around the levels (this makes things look cleaner when
+## turning them into dummy variables)
+numFacts <- function(x){
+  as_factor(x) %>%
+    as.numeric() %>%
+    as_factor()
+}
+
+
+## Load the data
+household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
+                      na = c("",
+                             "-6",
+                             "'-6'",
+                             "\"-6\""),
+                      quote = ""
+                      ) %>%
+  ## Remove replication weights and other "non-observational"
+  ## data points
+  filter(is.na(COMCOST) == F) %>%
+  select(-contains("repw"),
+         -starts_with("J"),
+         -CONTROL) %>%
+  mutate_if(is_character, numFacts)
+
+
+
+
+########################
+## Removing variables ##
+########################
+
+## Calculate which variables have nearZeroVariance
+NZV <- nearZeroVar(household)
+## Filter out those variables by omitting them from the columns selected
+household <- household[, -NZV]
+
+tree_household <- household %>%
+  select(
+    DISHWASH,
+    GARAGE,
+    DINING,
+    LAUNDY,
+    STORIES,
+    NUMPEOPLE,
+    BEDROOMS,
+    SEWTYPE,
+    BATHROOMS,
+    HEATFUEL,
+    HINCP
+  )
+
+
+```
+
+# Use `train()` to run a tree model with rpart (`method = "rpart"`)
+
+## Running the model with tuneLength equal to 30
+
+```{r tree_model}
+d_tree <- train(HINCP ~ .,
+                data = tree_household,
+                method = "rpart",
+                trControl = trainControl(
+                  method = "cv"
+                ),
+                tuneLength = 30)
+
+d_tree$results %>%
+  knitr::kable()
+```
+
+
+## The Best Model's Performance
+
+As we can see from the prior table of results, the best model explained just over 5% of the variation in the results. Since we are trying to predict a continuous variable with several factor variables, this low $R^2$ value is unsurprising; there is simply too much variation in $Y$. However, this also suggests that our predictors do not do a good job of capturing the patterns in the data.
+
+## Plotting the Tree and Interpreting the Results
+
+Since the complete tree has over 80 nodes in total (41 inner nodes and 42 outer nodes), plotting the tree is completely uninterpretable. However, we can prune the tree to only print the first three levels of nodes:
+
+```{r}
+d_tree$finalModel %>%
+  as.party() %>%
+  nodeprune(c(4,
+            5,
+            15,
+            44,
+            56,
+            67)) %>%
+  plot()
+```
+
+This tells us that the most important variable indicating a household's level of income is the number of bedrooms in the unit. For units with fewer than 3 bedrooms, the next best predictor was the number of bathrooms; for those with over 3 bedrooms, the number of laundry rooms was the best predictor. 
+
+## Surprising Relationships
+
+I was surprised to see that the number of stories in the house was not the most important variable. I would have expected single story houses to, on average, belong to individuals earning much less than those with more stories. However, the final tree is so large that all variables were included. Unfortunately, a byproduct of the tree's size is a loss in interpretability, so beyond the impacts of the most important variables, it is difficult to discern what interactions are most fascinating. See the end of the writeup for if you want to see the entire tree.
+
+# Use `train()` to run a tree model with ctree (`method = "ctree"`)
+
+## Running the model with tuneLength equal to 3
+
+```{r}
+c_tree <- train(HINCP ~ .,
+                data = tree_household,
+                method = "ctree",
+                trControl = trainControl(
+                  method = "cv"
+                ),
+                tuneLength = 3)
+
+c_tree$results %>%
+  knitr::kable()
+```
+
+## The Best Model
+
+As we can see, the best model did marginally better than the `rpart` tree. The model explained roughly 5.6% of the variation.
+
+## Plotting the Tree and Interpreting the Results
+
+```{r, eval = F}
+## Not run because the figure is poorly formatted
+## if not exported in high resolution and with a 
+## large width-height ratio. The code produces
+## the plot, it just requires the user to save it
+## as an image rather than embed it.
+
+
+c_tree$finalModel %>%
+  plot(type = "simple")
+```
+
+
+```{r, echo = F, fig.align = "center", fig.cap = "The Complete Tree"}
+knitr::include_graphics("Rplot.png")
+```
+
+The results for the `ctree` model were similar to those produced by `rpart`. I am still surprised by how the number of stories only seems to matter after the data has been subdivided several times; the earliest instance of the variable mattering is when there are more than 3 bedrooms and no dishwashers.
+
+# Use `train()` to run a lasso model with `glmnet`.
+
+```{r}
+lasso <- train(HINCP ~ .,
+               data = tree_household,
+               method = "glmnet",
+               tuneLength = 1,
+               trControl = trainControl(
+                 method = "cv"
+               ))
+
+
+lasso$results %>%
+  knitr::kable()
+```
+
+The best lasso model fits better than either of the decision trees. I suspect this is because many of the relationships between our predictors and outcomes are linear; thus, a linear model does just as well, if not better, than a model which is by nature non-linear.
+
+# Appendix
+
+## The complete decision tree produced by `rpart`
+
+```{r}
+d_tree$finalModel %>%
+  print()
+```
+
+## The complete decision tree produced by `ctree`
+
+```{r}
+c_tree$finalModel %>%
+  print()
+```

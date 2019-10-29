@@ -183,7 +183,7 @@ glmnet_train <- train(COMCOST ~ .,
 ```
 
 ## 2.2 Running `train()` with `method = glm`
-```{r}
+```{r, warning = F}
 glm_train <- train(COMCOST ~ .,
                    data = imputedHH,
                    method = "glm",
