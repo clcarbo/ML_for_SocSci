@@ -1,0 +1,197 @@
+---
+title: "Lab HW 5 Writeup"
+author: "Christopher Carbonaro"
+date: "10/31/2019"
+output: pdf_document
+---
+
+```{r setup, include = F, echo = F, message = F}
+
+###########
+## SETUP ##
+###########
+
+knitr::opts_chunk$set(comment = "",
+                      warning = F)
+
+## Set seed for consistent results
+set.seed(123)
+
+
+require(pacman)
+p_load(tidyverse,
+       caret,
+       psych,
+       mice,
+       glmnet,
+       partykit,
+       party,
+       xtable,
+       vip,
+       pdp,
+       randomForest)
+
+
+## Our factor variables are coded numerically in the data but they are
+## represented as strings. This helper function makes it easy to tell
+## R to read our factor variables in as factors while getting rid of 
+## the quotes around the levels (this makes things look cleaner when
+## turning them into dummy variables)
+numFacts <- function(x){
+  as_factor(x) %>%
+    as.numeric() %>%
+    as_factor()
+}
+
+
+## Load the data
+household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
+                      na = c("",
+                             "-6",
+                             "'-6'",
+                             "\"-6\""),
+                      quote = ""
+                      ) %>%
+  ## Remove replication weights and other "non-observational"
+  ## data points
+  filter(is.na(COMCOST) == F) %>%
+  select(-contains("repw"),
+         -starts_with("J"),
+         -CONTROL) %>%
+  mutate_if(is_character, numFacts)
+
+
+
+
+########################
+## Removing variables ##
+########################
+
+## Calculate which variables have nearZeroVariance
+NZV <- nearZeroVar(household)
+## Filter out those variables by omitting them from the columns selected
+household <- household[, -NZV]
+
+tree_household <- household %>%
+  select(
+    DISHWASH,
+    GARAGE,
+    DINING,
+    LAUNDY,
+    STORIES,
+    NUMPEOPLE,
+    BEDROOMS,
+    SEWTYPE,
+    BATHROOMS,
+    HEATFUEL,
+    HINCP
+  ) %>%
+  mutate(BATHROOMS = as.numeric(BATHROOMS))
+
+
+```
+
+
+# Run Random Forests using the `randomForest` package
+## Running the Model
+
+The following code calls the `caret` package to train a random forest model on the data. `tuneLength` selects `mtry` as 5; for the sake of computation time, we will avoid checking other values.
+
+```{r}
+rand_for <- train(HINCP ~ .,
+                  data = tree_household,
+                  method = "rf",
+                  tuneLength = 1,
+                  ntree = 100,
+                  importance = T)
+
+plot(rand_for$finalModel,
+     main = "Value of Additional Trees")
+```
+
+As we can see, the value of computing additional trees drops quickly. After approximately 20 trees, we no longer see much noticeable improvement in error reduction.
+
+## Examining Variable Importance
+
+The following code lets us examine the importance of each variable in predicting $Y$. Note that many of the variables are repeated with different values on the end. This is a byproduct of `caret` producing dummy variables from each of our factor variables.
+
+```{r}
+rand_for_VI <- varImp(rand_for)
+
+rand_for_VI$importance %>%
+  rownames_to_column(var = "Variable") %>%
+  arrange(desc(Overall)) %>%
+  knitr::kable()
+
+
+varImpPlot(rand_for$finalModel,
+           main = "Variable Importance")
+
+vip(rand_for,
+    fill = "#6666ff") +
+  theme_light() +
+  ggtitle("Most Important Variables")
+
+partial(rand_for,
+        pred.var = c("BATHROOMS",
+                     "NUMPEOPLE")) %>%
+  plotPartial(main = "Interaction Between Number of People\nand Number of Bathrooms")
+```
+
+As we can see, whether the household has a laundry machine has the biggest impact on the predicted household income. This is closely followed by the number of bathrooms in the house.
+
+# Running Random Forests using conditional inference forests
+## Running the Model
+
+The following code calls the `train()` function to create a conditional inference random forest model from the data. Again, the `tuneLength` = 1 parameter has us use a value of 5 for `mtry`.
+
+```{r}
+cond_inf <- train(HINCP ~ .,
+                  data = tree_household,
+                  method = "cforest",
+                  tuneLength = 1,
+                  controls = cforest_control(
+                    ntree = 100))
+```
+
+The following code lets us see the variable importance assigned by the conditional inference trees.
+
+```{r}
+cond_inf_VI <- varimp(cond_inf$finalModel)
+
+cond_inf_VI %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "Variable") %>%
+  rename(Importance = ".") %>% 
+  arrange(desc(Importance)) %>%
+  knitr::kable()
+```
+
+The variable importance is identical between the Random Forests model and the Conditional Inference Trees. 
+
+## Running a Linear Regression
+
+How do random forests do in comparison to a linear regression?
+
+```{r, warning = F, comment = ""}
+lin_reg <- train(HINCP ~ .,
+                 tree_household,
+                 method = "lm",
+                 trControl = trainControl(
+                   method = "boot",
+                   number = 25
+                 ))
+
+rand_for$results %>%
+  knitr::kable(caption = "Random Forests Performance")
+
+cond_inf$results %>%
+  knitr::kable(caption = "Conditional Inference Trees Performance")
+
+lin_reg$results %>%
+  knitr::kable(caption = "Linear Model Results")
+
+lin_reg$finalModel
+```
+
+The random forests package performed the best and the linear regression fared worst, suggesting that there is some degree of non-linearity in this dataset. In addition, the most significant variable in predicting the response variable with random forests was not the most significant variable when using a linear model (the coefficient for BATHROOMS is much lower than, for exxample, SEWTYPE6).

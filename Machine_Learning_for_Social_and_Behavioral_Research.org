@@ -1513,6 +1513,153 @@ stab.out11
     - both can utilize partial dependence plots
     - random forests has been evaluated further with variable importance
 
+** N.B. Absent for lecture on <2019-11-01 Fri 09:30-10:45>. Long week, tired, Winston sick.
+** Clustering
+   <2019-11-05 Tue 09:30-10:45> 
+*** Overview
+    
+    - Unsupervised learning
+    - Person-centered approach
+    - Cluster Analysis
+      - Ward's hierarchical clustering
+      - K-means clustering
+    - Empirical example
+
+**** Supervised Learning
+
+     - So far, we've discussed supervised learning methods (e.g., regression, classification)
+     - We have access to a set of p variables $x_1$ to $x_p$, measured on n observations, and a response y also measured on those same observations.
+     - Goal is to predict $y$ using $X$
+      
+     This is a well-understood area of statistics.
+     - For instance, if you are asked to predict a binary outcome from a data set, you have a very well developed set of tools (e.g., logistic regression, classification trees) as well as a clear understanding of how to assess the quality of the results obtained (e.g., cross-validation, hold out sample)
+      
+**** Unsupervised Learning
+
+     - A set of statistical tools intended for the setting in which we have a set of variables $X$ measured on n observations
+     - We are not interested in prediction because we do not have an associated response variable $y$
+     - The goal is to discover interesting things about the measurements on $X$
+     - Is there an informative way to visualize the data?
+       - Can we discover subgroups among the variables or among the observations?
+     
+     This is much more challenging than supervised learning
+     - Tends to be more subjective
+     - There is no simple goal for the analysis, such as prediction of a response
+     - It can be hard to assess the results obtained from unsupervised learning methods because there is no universally accepted mechanism for validating the results
+       - i.e. cannot check our work because we don't know the true answer. The problem is, appropos, unsupervised.
+        
+     However, these techniques for UL are of growing importance in a number of fields
+     - A cancer researcher might assess gene expression levels in patients with breast cancer to look for subgroups among the breast cancer samples in order to obtain a better understanding of the disease
+     - An online shopping site might try to identify groups of shoppers with simlar browsing and purchase histories to target coupons, sales, etc.
+     - A search engine might choose what search results to display to a particular individual based on the click histories of other individuals with similar search patterns
+
+**** The Person-Centered Approach
+
+     - The modern person-centered approach is presented in Bergman and Magnusson (1997) and in Bergman, von Eye, and Magnusson (2006)
+     - The approach has two facets: (1) a theoretical facet and (2) a methodological facet in the form of methods that most naturally are useful in implementing person-oriented research (usually pattern oriented methods)
+     - In the holistic-interactionistic research paradigm the individual is seen as an organized whole with elements operating together to achieve a functioning system in a dynamic process with interactions between components
+     - Components could be of different kinds (e.g., behaviors, biological factors, environmental factors)
+     - This view is related to a dynamical systems view that exists in many other sciences
+     - The paradigm can be applied to almost all studies of individuals, guiding problem formulation, research strategy and methodology, and guiding how to interpret findings
+
+**** Tenents
+
+     - Conceptual model of the developmental process is the one proposed by the holistic-interactionistic research paradigm. Hence, the process is partly individual-specific.
+     - The developmental process follows laws that relate to structures organized and functioning as patterns of operating factors
+       - These laws are assumed to have communalities across individuals but they cannot be assumed to be identical across individuals.
+     - In the developmental process, typical patterns of observed system components often emerge both within the individual and across individuals.
+       - Although there is an infinite variety of differences with regard to process characteristics and observed states at a detailed level, there will often be a small number of more frequently observed patterns
+
+**** Methodological Considerations
+
+     - The methodology should allow for inferences about the single person
+     - The methodology should allow for inferences about individual patterns of functioning. This can normally only be accomplished by treating the key pattern defining the system of interest (usually a vector of variable values) as an indivisible unit in the analysis
+
+*** Cluster Analysis
+    
+**** What is it?
+
+    - Cluster analysis or clustering is the task of grouping a set of objects in such a way that objects in the same group (called a cluster) are more similar (in some sense or another) to each other than to those in other groups (clusters)
+    - We seek to partition observations into distinct groups so that the observations within each group are quite similar to each other, while observations in different groups are quite different from each other.
+    - To make this concrete, we must define what it means for two or more observations to be similar or different.
+
+**** Clustering Algorithms
+
+     Many clustering algorithms exist. The two most popular are:
+     - Ward's hierarchical clustering
+     - K-means clustering
+
+**** Different approaches
+     
+    - K-means clustering
+      - Seek to partition the observations into a pre-specified number of clusters
+      - Top-down approach
+
+    - Hierarchical clustering
+      - We do not know in advance how many clusters we want
+      - Bottom-up approach (grouping similar observations together)
+      - End up with a tree-like visual representation of the observations called a dendrogram
+
+*** Hierarchical Clustering
+    
+**** What is it?
+
+    - Extremely simple algorithm
+    - Begin by defining some sort of dissimilarity measure between each pair of observations (e.g., Euclidean distance)
+    - Algorithm proceeds iteratively
+      - Each of the n observations is treated as its own cluster
+      - The two clusters that are most similar are then fused so that there now are n−1 clusters
+      - Repeat Step 2 until all of the observations belong to one single cluster
+
+    - The concept of dissimilarity between a pair of observations needs to be extended to a pair of groups of observations
+    - This extension is achieved by developing the notion of linkage, which defines the dissimilarity between two groups of observations.
+      - Four most common types of linkage—complete, average, single, and centroid
+
+**** Linkages
+
+    - Complete
+      - Maximal intercluster dissimilarity. Compute all pairwise dissimilarities between the observations in cluster A and the observations in cluster B, and record the largest of these dissimilarities.
+    - Single
+      - Minimal intercluster dissimilarity. Compute all pairwise dissimilarities between the observations in cluster A and the observations in cluster B, and record the smallest of these dissimilarities. Single linkage can result in extended, trailing clusters in which single observations are fused one-at-a-time.
+    - Average
+      - Mean intercluster dissimilarity. Compute all pairwise dissimilarities between the observations in cluster A and the observations in cluster B, and record the average of these dissimilarities.
+    - Centroid
+      - Dissimilarity between the centroid for cluster A (a mean vector of length p) and the centroid for cluster B. Centroid linkage can result in undesirable inversions.
+
+**** Euclidean Distance
+
+     - $d(x, y) = \sqrt{(x_2 - x_1)^2 + (y_x - y_1)^2}$
+     - Sum of squares of difference on x plus sum of squares of differences on y
+     - Biased by variables with a larger scale -> requires a standardization of data
+
+**** Dissimilarity Measures
+
+     - The choice of dissimilarity measure is very important, as it has a strong effect on the resulting clusters
+     - An alternative dissimilarity measure is a correlation-based distance
+       - Considers two observations to be similar if their features are highly correlated, even though the observed values may be far apart int erms of Euclidean distance
+
+**** Interpreting Dendrograms
+
+    - Each leaf of the dendrogram represents one of the n observations
+    - Moving up the tree, leaves begin to fuse into branches corresponding to observations that are similar to each other
+    - Moving higher up, branches fuse, either with leaves or other branches
+    - The earlier (lower in the tree) fusions occur, the more similar the groups of observations are to each other
+    - Observations that fuse later (near the top of the tree) can be quite different
+      
+    - The height of the fusion, as measured on the vertical axis, indicates how different the two observations are
+      - Observations that fuse at the very bottom of the tree are quite similar to each other
+      - Observations that fuse close to the top of the tree will tend to be quite different
+    - Draw conclusions about the similarity of two observations based on the location on the vertical axis where branches containing those two observations first are fused
+
+**** Picking a Number of Clusters from the Dendrogram
+
+    - Make a horizontal cut across the dendrogram
+    - The distinct sets of observations beneath the cut can be interpreted as clusters
+    - Therefore a dendrogram can be used to obtain any number of clusters
+    - Researchers often look at the dendrogram and select by eye a sensible number of clusters based on the heights of the fusion and the number of clusters desired
+    - The choice of where to cut the dendrogram is not always clear.
+
+
 * Week 11: Nonlinear methods
 * Week 12: Measurment and ML
 * Week 13: Searching for Groups
