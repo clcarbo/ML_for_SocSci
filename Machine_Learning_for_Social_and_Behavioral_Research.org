@@ -1637,6 +1637,10 @@ stab.out11
      - The choice of dissimilarity measure is very important, as it has a strong effect on the resulting clusters
      - An alternative dissimilarity measure is a correlation-based distance
        - Considers two observations to be similar if their features are highly correlated, even though the observed values may be far apart int erms of Euclidean distance
+         
+**** Correlation vs Euclidean
+
+     [[./L_Pics/Clustering_1.png]]
 
 **** Interpreting Dendrograms
 
@@ -1659,8 +1663,229 @@ stab.out11
     - Researchers often look at the dendrogram and select by eye a sensible number of clusters based on the heights of the fusion and the number of clusters desired
     - The choice of where to cut the dendrogram is not always clear.
 
+     [[./L_Pics/Clustering_2.png]]
+
+*** K-Means Clustering
+    
+**** What is it?
+     
+     - First, specify the desired number of clusters K
+     - The K-means algorithm will assign each observation to exactly one of the K clusters
+
+**** Clustering with K = 2, 3, and 4
+
+     [[./L_Pics/Clustering_3.png]]
+
+**** Notation
+
+    - C1, ..., CK denote sets containing the indices of the observations in each cluster satisfying two properties
+    - $C1 \cup C2 \cup ... \cup CK = 1, ..., n$
+    - $Ck \cap ck \dne 0 for all k \dne k$
+    - Each observation belongs to at least one of the K clusters
+    - Clusters are nonoverlapping: no observation belongs to more than one cluster
+      
+**** What's the goal?
+
+    - Good clustering is one for which the within-cluster variation is as small as possible
+    - The within-cluster variation for cluster CK is a measure, W(CK) , of the amount by which the observations within a cluster differ from each other
+    - We want to solve
+    - $minimize$   $\sum_{k=1}^{K} W(C_k)$
+    - Goal is to partition the observations into 𝐾 clusters, such that the total within-cluster variation, summed over all 𝐾 clusters, is as small as possible.
+
+**** Definition of Within-Cluster Variation
+
+     Most commonly used metric is the squared Euclidian distance
+ 
+     $W(C_k) = \frac{1}{|C_k|}\sum_{i \in C_k}\sum_{j=1}^{p}(x_{ij}-x_{i'j})^2$
+
+     CK denotes the number of observations in cluster k
+
+**** Algorithm
+
+    - Randomly assign a number, from 1 to 𝐾, to each of the observations. These serve as initial cluster assignments for the observations.
+    - Iterate until the cluster assignments stop changing:
+      - For each of the 𝐾 clusters, compute the cluster centroid. The  𝑘 𝑡ℎ  cluster centroid is the vector of the p feature means for the observations in the  𝑘 𝑡ℎ  cluster
+      - Assign each observation to the cluster whose centroid is closest (where closest is defined using Euclidean distance)
+
+**** Snapshot of Algorithm
+
+     [[./L_Pics/Clustering_4.png]]
+
+**** Local Optimum
+     - The K-means algorithm finds a local rather than global optimum
+     - Results obtained will depend on the initial (random) cluster assignment of each observation
+     - It is important to run the algorithm multiple times from different random starting values and then select the best solution
+
+     [[./L_Pics/Clustering_5.png]]
+     
+*** Conclusion
+    
+**** Issues in Clustering
+     - Determining the number of clusters to retain
+     - Cross-validation of clusters and cluster sizes
+     - All or none decision process
+       - Either in or out of a cluster
+     - What to do with observations that really don’t belong in any cluster
+     - Consequences of choices among linkage, dissimilarity measure, cutting dendrogram
+     - Sensitivity to data pertubations
+
+**** Recommendations
+     - Performing clustering with different choices of parameters, and looking at the full set of results in order to see what patterns consistently emerge
+     - Since clustering can be non-robust, we recommend clustering subsets of the data in order to get a sense of the robustness of the clusters obtained
+     - Most importantly, we must be careful about how the results of a clustering analysis are reported.
+       - Results should not be taken as the absolute truth about a data set
+       - Constitute a starting point for the development of a scientific hypothesis and further study, preferably on an independent data set
 
 * Week 11: Nonlinear methods
+  
+** Mixture Models
+   <2019-11-12 Tue 09:30-10:45>
+
+*** Posterior Probability of Class Membership
+
+    - Each individual has a posterior probability of belonging to each class
+    - Ideally, these probabilities are strong (near 1) for a single class and weak for other classes
+    - Accounts for uncertainty in class assignment
+      - Important when comparing classes on various outcomes and determinants
+
+*** Evaluating Model Fit
+
+    - Statistical Model fit
+      - Log Likelihood
+        - If we didn't penalize our models for complexity, this would always select the most complex one
+      - Penalizing for Complexity:
+        - Akaike Information Criteria
+        - Bayesian Information Criteria
+    - Model Usefulness
+      - Substantive Interpretation
+      - Classification Quality: how well are we able to classify both groups?
+        - Classification Table
+        - Entropy
+
+*** Practical Issues
+    
+    There is no minimum sample size.
+    - Sample size is related to the number and type of classes you can identify
+
+    Sample size and the outcomes both influence the type and number of classes. Within-class model and between-class contraints determines the type and number of classes
+
+*** Estimation Issues
+    
+    - Convergence
+      - Log-Likelihood should increase smoothly; absolute and relative changes should go to zero; class counts should be stable
+    - Convergence problems
+      - May need better starting values
+      - May indicate nonidentification
+
+    In short, do not be suprised if you try to run a mixture model and you get problems e.g. "Couldn't find a convergent model."
+
+*** Convergence Issues
+
+    You need to have multiple starting points for parameter estimation. Otherwise, you may reach a local optimum but not a global optimum.
+    
+    More dimensions means you will likely need to test more starting values. If you get a collection of inconsistent log-likelihoods, your surface is likely poorly defined. You want a consistent global optimum.
+    
+    [[./L_Pics/Mixtures_pt2.png]]
+
+*** An Example:
+    
+**** Simulated Data:
+
+     Let's say we have data with 2 variables pulled from 3 groups.
+     
+     - data.1 = data.frame(grp = 1, x = rnorm(100, mean = -2, sd = 1), y = rnorm(100, mean =  2, sd = 1))
+     - data.2 = data.frame(grp = 2, x = rnorm(200, mean =  2, sd = 1), y = rnorm(200, mean = -2, sd = 1))
+     - data.3 = data.frame(grp = 3, x = rnorm(125, mean =  2, sd = 1), y = rnorm(125, mean =  2, sd = 1))
+       
+     [[./L_Pics/Mixtures_pt2_2.png]]
+
+**** ~mclust~ models
+
+     https://cran.r-project.org/web/packages/mclust/vignettes/mclust.html
+     - multivariate mixture
+     - "EII" = spherical, equal volume
+     - "VII" = spherical, unequal volume
+     - "EEI" = diagonal, equal volume and shape
+     - "VEI" = diagonal, varying volume, equal shape
+     - "EVI" = diagonal, equal volume, varying shape
+     - "VVI" = diagonal, varying volume and shape
+     - "EEE" = ellipsoidal, equal volume, shape, and orientation
+     - "EVE" = ellipsoidal, equal volume and orientation (*)
+     - "VEE" = ellipsoidal, equal shape and orientation (*)
+     - "VVE" = ellipsoidal, equal orientation (*)
+     - "EEV" = ellipsoidal, equal volume and equal shape
+     - "VEV" = ellipsoidal, equal shape
+     - "EVV" = ellipsoidal, equal volume (*)
+     - "VVV" = ellipsoidal, varying volume, shape, and orientation
+
+**** ~mclust~ output
+
+     [[./L_Pics/Mixtures_pt2_3.png]]
+     
+     - Fits models with all types of constraints and chooses model with highest BIC (df penalty)
+     - Many times, we fit a pre-specified type of model and vary the number of classes
+     
+*** Entropy as Evaluation
+    A measure of classification quality that ranges between 0 and 1. A value of 1 indicates that individuals are easy to classify and a value of 0 indicates that individuals are randomly classified.
+
+    $$entropy = 1 + \frac{1}{Nlog(k)}\big(\sum_{i=1}^{N}\sum_{k=1}^{K}P(C=k|x_i)log(P(C=k|x_i))   \big)$$
+
+    Values of 0.9-0.8 are considered to be quite good.
+
+*** Summary
+
+    Mixture models are a flexible tool to model heterogeneity by deriving a probabilistic membership to class.
+
+    Some drawbacks:
+    - Can be tough to describe the classes
+    - Tools in R are somewhat simpls
+    - Can be tough to tell when overfitting, particularly in the case of skewed data
+
+    Some of these concerns are ameliorated when pairing with other types of models, such as SEM, allowing for more theory and description.
+
+** Factor Analysis
+  
+*** Outline
+    The focus of this presentation will be:
+
+    1. Introduce Exploratory Factor Analysis
+    2. Differentiate it from Principal Components Analysis
+    3. Specify Necessary EFA Details
+    4. Go Through the Model Fitting Steps
+
+*** FA Intro
+
+    - We are going to take a somewhat circuitous route to understanding factor analysis. Instead of starting with the foundation of factor analysis, we are going to start with why we would use it.
+    - Simply put, it answers the question of: How many constructs underly the scale I created? We will be using the Holzinger-Swineford dataset, a cognitive scale of 9 items (scales). Our question that we will answer is whether this scale measures a singular construct (i.e. intelligence is a singular construct), or whether it is multidimensional in nature. 
+
+*** Holzinger Swineford
+
+    For this presentation we will be using the "classic" Holzinger-Swineford (1939) dataset. It is useful because it has a pretty well established factor structure, but there is some uncertainty about the fit.
+
+    You can access it from Mplus (24 scales), but we will be using the version from the lavaan package (9 scales).
+
+    - x1 Visual perception
+    - x2 Cubes
+    - x3 Lozenges
+    - x4 Paragraph comprehension
+    - x5 Sentence completion
+    - x6 Word meaning
+    - x7 Speeded addition
+    - x8 Speeded counting of dots
+    - x9 Speeded discrimination straight and curved capitals
+
+    Before we use statistical methods to determine how many factors underly these 9 scales, let's examine the correlation matrix.
+
+    [[./L_Pics/FA_1.png]]
+
+*** What is a Latent Factor?
+
+    The basis for methods suchs as exploratory factor analysis, confirmatory factor analysis, and structural equation modeling is posing the existence of latent factors.
+
+    In essence, what we are doing is saying that some "construct" underlies a set of observed variables. The simplest case is that of intelligence. Every (valid) IQ test is the result of some form of factor analysis. By measuring a host of scales, such as picture completion, vocabulary, arithmetic etc... we are saying that the correlation between these variables is not a result of chance occurrence, but the overlap between scales can be attributed to a "common factor".
+
+    The use of factor analysis "tests" whether there are latent factors underlying a correlation matrix (set of variables).
+
 * Week 12: Measurment and ML
 * Week 13: Searching for Groups
 * Week 14: Longitudinal Data
