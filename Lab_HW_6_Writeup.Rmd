@@ -1,0 +1,217 @@
+---
+title: "Lab HW 6 Writeup"
+author: "Christopher Carbonaro"
+date: "11/21/2019"
+output: pdf_document
+---
+
+```{r setup, include = F, echo = F, message = F}
+
+###########
+## SETUP ##
+###########
+
+knitr::opts_chunk$set(comment = "",
+                      warning = F)
+
+## Set seed for consistent results
+set.seed(123)
+
+
+require(pacman)
+p_load(tidyverse,
+       caret,
+       psych,
+       mice,
+       glmnet,
+       partykit,
+       party,
+       mclust,
+       mixtools)
+
+
+## Our factor variables are coded numerically in the data but they are
+## represented as strings. This helper function makes it easy to tell
+## R to read our factor variables in as factors while getting rid of 
+## the quotes around the levels (this makes things look cleaner when
+## turning them into dummy variables)
+numFacts <- function(x){
+  as_factor(x) %>%
+    as.numeric() %>%
+    as_factor()
+}
+
+
+## Load the data
+household <- read_csv("AHS 2017 National PUF v3.0 CSV/household.csv",
+                      na = c("",
+                             "-6",
+                             "'-6'",
+                             "\"-6\""),
+                      quote = ""
+                      ) %>%
+  ## Remove replication weights and other "non-observational"
+  ## data points
+  filter(is.na(COMCOST) == F) %>%
+  select(-contains("repw"),
+         -starts_with("J"),
+         -CONTROL) %>%
+  mutate_if(is_character, numFacts)
+
+
+########################
+## Removing variables ##
+########################
+
+## Calculate which variables have nearZeroVariance
+NZV <- nearZeroVar(household)
+## Filter out those variables by omitting them from the columns selected
+household <- household[, -NZV]
+
+
+```
+
+# Clusters and Mixture Models
+
+## Hierarchical Clustering
+
+I used the `hclust()` function to generate a dendrogram of clusters for this housing dataset. After generating the clusters, I arbitrarily cut the dendrogram into three groups for the purpose of examining the proportion of observations belonging to each. The table below shows that after scaling the data and fixing the number of groups to be 3, only 3 observations were not assigned to the primary group. When we did not scale the data, only 7 observations fell outside of the primary group. This suggests that there are no latent clusters within the data. To be sure, we check the frequencies when we specify 10 groups. Since almost all of our observations still fall within the first group, we can be reasonably confident that there are no hidden clusters. 
+
+```{r}
+
+#===========================#
+#   Working with Clusters   #
+#===========================#
+
+### Preparing the Dataset ###
+cluster_household <- household %>%
+  select(
+    # Variables about house composition
+    DISHWASH,
+    GARAGE,
+    DINING,
+    LAUNDY,
+    STORIES,
+    BEDROOMS,
+    SEWTYPE,
+    BATHROOMS,
+    HEATFUEL,
+    
+    # Variables about surrounding neighborhood
+    RATINGHS,
+    RATINGNH,
+    NEARTRASH,
+    NHQSCHOOL,
+    NHQPCRIME,
+    NHQSCRIME,
+    NHQPUBTRN,
+    
+    # Variables about occupants
+    HHGRAD,
+    HHAGE,
+    NUMNONREL,
+    NUMPEOPLE,
+    HINCP
+  )
+
+
+cluster_household_dum <- cluster_household %>%
+  mutate(BATHROOMS = as.numeric(BATHROOMS)) %>%
+  model.matrix(~ (.),
+               data = .) 
+
+cluster_household_dum <- cluster_household_dum[, -1]
+
+cluster_household_scaled <- cluster_household_dum %>%
+  scale()
+
+
+### Generating the Clusters ###
+hclust <- hclust(dist(cluster_household_dum),
+                   method='average')
+
+hclust2 <- hclust(dist(cluster_household_scaled),
+                   method='average')
+
+
+# Cutting the Dendrogram
+groupings_3 <- cutree(hclust, 3)
+groupings_3S <- cutree(hclust2, 3)
+groupings_10 <- cutree(hclust, 10)
+groupings_10S <- cutree(hclust2, 10)
+
+# Frequency counts for the groups
+table(groupings_3) %>%
+  knitr::kable(label = "Frequencies for 3 Clusters",
+               col.names = c("Group", "Frequency"))
+
+table(groupings_3S) %>%
+  knitr::kable(label = "Frequencies for 3 Clusters (Scaled)",
+               col.names = c("Group", "Frequency"))
+
+table(groupings_10) %>%
+  knitr::kable(label = "Frequencies for 10 Clusters",
+               col.names = c("Group", "Frequency"))
+
+table(groupings_10S) %>%
+  knitr::kable(label = "Frequencies for 10 Clusters (Scaled)",
+               col.names = c("Group", "Frequency"))
+
+plot(hclust,
+     main='Complete Linkage',
+     xlab='',
+     sub='',
+     cex=.9)
+```
+
+The extreme skew of the dendrogram above is illustative of the lack of emergent clusters.
+
+## Mixture Models
+
+Another way of searching for clusters of observations within the data is to use mixture models. We can use the `mclust` package to search for these mixtures.
+
+```{r}
+
+#=================================#
+#   Working with Mixture Models   #
+#=================================#
+
+mixture <- Mclust(cluster_household_dum,
+                  G = 1:9,
+                  modelNames = "VVI")
+
+summary(mixture, parameters = TRUE)
+
+```
+
+It appears as if `Mclust` was unable to find any mixtures within the distribution. I do not know if this is because of a coding error, or if this is a manifestation of what we saw earlier when working with hierarchical clustering i.e. there do not appear to be latent groups within the data. I cannot get this function to generate multiple classes, so this is something I may need to reinvestigate.
+
+# Factor Analysis
+
+I initially selected a collection of variables when working with clusters and organized them by topic: 1. House composition, 2. Surrounding neighborhood, and 3. The occupants. In theory, we should be able to conduct a factor analysis to see whether there are better latent factors which we might produce or whether these variables are justifiably grouped together. However, when I tried to create these factors from the selected variables, I had issues with collinearity. Consequently, I have selected a subset of these variables; these are still grouped by latent concepts, so we can check to see what kinds of factors are produced.
+
+```{r}
+factors_household <- cluster_household %>%
+  select(
+         # Variables by occupant
+         HHAGE,
+         NUMNONREL,
+         NUMPEOPLE,
+         HINCP,
+         # Variables by house composition
+         STORIES,
+         BEDROOMS,
+         BATHROOMS) %>%
+  mutate(BATHROOMS = as.numeric(BATHROOMS)) %>%
+  scale() %>%
+  as.data.frame() %>%
+  factanal(2)
+
+print(factors_household$loadings, cutoff = 0)
+```
+
+As we can see from the printed factor loadings, these variables do not appear to be indicative of a hidden, latent factor. The first variable appears to be related to the maximum occupancy of the household, predominantely defined by the number of bedrooms and the number of individuals living therein. The second factor is overwhelmingly defined by the age of the household owner, which correlates very weakly with all other variables. Most importantly, however, is that all variables loaded onto both factors. Therefore, we cannot describe the uniqueness of the factors themselves; this is why we should change our number of latent variables or rethink our theory for groupings.
+
+
+
+

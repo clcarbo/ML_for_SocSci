@@ -1,0 +1,14 @@
+#+TITLE: Final Project Proposal
+#+AUTHOR: Christopher Carbonaro
+#+DATE: 7 November 2019
+#+CLASS: Machine Learning For Social and Behavioral Research
+
+* Introduction
+  
+In the United States, more people use mind altering substances than those who abstain. According to the Substance Abuse and Mental Health Services Administration (SAMHSA, 2019), roughly "2 out of 5 people aged 12 or older did not use substances in the past month. The 164.8 million past month substance users in 2018 include 139.8 million people who drank aclohol, 58.8 million people who used a tobacco product, and 31.9 million people who used an illicit drug."
+
+* The Research Gap: Relapse as a Sociological Phenomenon
+
+* Methods
+
+* Resources

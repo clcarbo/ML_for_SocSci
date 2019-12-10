@@ -1514,6 +1514,270 @@ stab.out11
     - random forests has been evaluated further with variable importance
 
 ** N.B. Absent for lecture on <2019-11-01 Fri 09:30-10:45>. Long week, tired, Winston sick.
+* Week 11: Nonlinear methods
+  
+** Mixture Models
+   <2019-11-12 Tue 09:30-10:45>
+
+*** Posterior Probability of Class Membership
+
+    - Each individual has a posterior probability of belonging to each class
+    - Ideally, these probabilities are strong (near 1) for a single class and weak for other classes
+    - Accounts for uncertainty in class assignment
+      - Important when comparing classes on various outcomes and determinants
+
+*** Evaluating Model Fit
+
+    - Statistical Model fit
+      - Log Likelihood
+        - If we didn't penalize our models for complexity, this would always select the most complex one
+      - Penalizing for Complexity:
+        - Akaike Information Criteria
+        - Bayesian Information Criteria
+    - Model Usefulness
+      - Substantive Interpretation
+      - Classification Quality: how well are we able to classify both groups?
+        - Classification Table
+        - Entropy
+
+*** Practical Issues
+    
+    There is no minimum sample size.
+    - Sample size is related to the number and type of classes you can identify
+
+    Sample size and the outcomes both influence the type and number of classes. Within-class model and between-class contraints determines the type and number of classes
+
+*** Estimation Issues
+    
+    - Convergence
+      - Log-Likelihood should increase smoothly; absolute and relative changes should go to zero; class counts should be stable
+    - Convergence problems
+      - May need better starting values
+      - May indicate nonidentification
+
+    In short, do not be suprised if you try to run a mixture model and you get problems e.g. "Couldn't find a convergent model."
+
+*** Convergence Issues
+
+    You need to have multiple starting points for parameter estimation. Otherwise, you may reach a local optimum but not a global optimum.
+    
+    More dimensions means you will likely need to test more starting values. If you get a collection of inconsistent log-likelihoods, your surface is likely poorly defined. You want a consistent global optimum.
+    
+    [[./L_Pics/Mixtures_pt2.png]]
+
+*** An Example:
+    
+**** Simulated Data:
+
+     Let's say we have data with 2 variables pulled from 3 groups.
+     
+     - data.1 = data.frame(grp = 1, x = rnorm(100, mean = -2, sd = 1), y = rnorm(100, mean =  2, sd = 1))
+     - data.2 = data.frame(grp = 2, x = rnorm(200, mean =  2, sd = 1), y = rnorm(200, mean = -2, sd = 1))
+     - data.3 = data.frame(grp = 3, x = rnorm(125, mean =  2, sd = 1), y = rnorm(125, mean =  2, sd = 1))
+       
+     [[./L_Pics/Mixtures_pt2_2.png]]
+
+**** ~mclust~ models
+
+     https://cran.r-project.org/web/packages/mclust/vignettes/mclust.html
+     - multivariate mixture
+     - "EII" = spherical, equal volume
+     - "VII" = spherical, unequal volume
+     - "EEI" = diagonal, equal volume and shape
+     - "VEI" = diagonal, varying volume, equal shape
+     - "EVI" = diagonal, equal volume, varying shape
+     - "VVI" = diagonal, varying volume and shape
+     - "EEE" = ellipsoidal, equal volume, shape, and orientation
+     - "EVE" = ellipsoidal, equal volume and orientation (*)
+     - "VEE" = ellipsoidal, equal shape and orientation (*)
+     - "VVE" = ellipsoidal, equal orientation (*)
+     - "EEV" = ellipsoidal, equal volume and equal shape
+     - "VEV" = ellipsoidal, equal shape
+     - "EVV" = ellipsoidal, equal volume (*)
+     - "VVV" = ellipsoidal, varying volume, shape, and orientation
+
+**** ~mclust~ output
+
+     [[./L_Pics/Mixtures_pt2_3.png]]
+     
+     - Fits models with all types of constraints and chooses model with highest BIC (df penalty)
+     - Many times, we fit a pre-specified type of model and vary the number of classes
+     
+*** Entropy as Evaluation
+    A measure of classification quality that ranges between 0 and 1. A value of 1 indicates that individuals are easy to classify and a value of 0 indicates that individuals are randomly classified.
+
+    $$entropy = 1 + \frac{1}{Nlog(k)}\big(\sum_{i=1}^{N}\sum_{k=1}^{K}P(C=k|x_i)log(P(C=k|x_i))   \big)$$
+
+    Values of 0.9-0.8 are considered to be quite good.
+
+*** Summary
+
+    Mixture models are a flexible tool to model heterogeneity by deriving a probabilistic membership to class.
+
+    Some drawbacks:
+    - Can be tough to describe the classes
+    - Tools in R are somewhat simpls
+    - Can be tough to tell when overfitting, particularly in the case of skewed data
+
+    Some of these concerns are ameliorated when pairing with other types of models, such as SEM, allowing for more theory and description.
+
+** Factor Analysis
+  
+*** Outline
+    The focus of this presentation will be:
+
+    1. Introduce Exploratory Factor Analysis
+    2. Differentiate it from Principal Components Analysis
+    3. Specify Necessary EFA Details
+    4. Go Through the Model Fitting Steps
+
+*** FA Intro
+
+    - We are going to take a somewhat circuitous route to understanding factor analysis. Instead of starting with the foundation of factor analysis, we are going to start with why we would use it.
+    - Simply put, it answers the question of: How many constructs underly the scale I created? We will be using the Holzinger-Swineford dataset, a cognitive scale of 9 items (scales). Our question that we will answer is whether this scale measures a singular construct (i.e. intelligence is a singular construct), or whether it is multidimensional in nature. 
+
+*** Holzinger Swineford
+
+    For this presentation we will be using the "classic" Holzinger-Swineford (1939) dataset. It is useful because it has a pretty well established factor structure, but there is some uncertainty about the fit.
+
+    You can access it from Mplus (24 scales), but we will be using the version from the lavaan package (9 scales).
+
+    - x1 Visual perception
+    - x2 Cubes
+    - x3 Lozenges
+    - x4 Paragraph comprehension
+    - x5 Sentence completion
+    - x6 Word meaning
+    - x7 Speeded addition
+    - x8 Speeded counting of dots
+    - x9 Speeded discrimination straight and curved capitals
+
+    Before we use statistical methods to determine how many factors underly these 9 scales, let's examine the correlation matrix.
+
+    [[./L_Pics/FA_1.png]]
+
+*** What is a Latent Factor?
+
+    The basis for methods suchs as exploratory factor analysis, confirmatory factor analysis, and structural equation modeling is posing the existence of latent factors.
+
+    In essence, what we are doing is saying that some "construct" underlies a set of observed variables. The simplest case is that of intelligence. Every (valid) IQ test is the result of some form of factor analysis. By measuring a host of scales, such as picture completion, vocabulary, arithmetic etc... we are saying that the correlation between these variables is not a result of chance occurrence, but the overlap between scales can be attributed to a "common factor".
+
+    The use of factor analysis "tests" whether there are latent factors underlying a correlation matrix (set of variables).
+
+*** Latent Factors in the Holzinger Swineford Dataset
+    The Holzinger Swineford dataset is made up of cognitive scales. For simplicity sake, let's say that these can measure intelligence. The fundamental question we are answering with factor analysis with this dataset is whether there is a latent factor or latent factors underlying it. This can go back to the fundamental debate on whether IQ is a singular construct or multidimensional? We can answer this question with factor analysis.
+
+    With 9 scales, we are limited in the number of latent factors we can "search" for. 
+
+    [[./L_Pics/FA_2.png]]
+
+*** Two Approaches to FA
+    1. Confirmatory
+       - If you have a hypothesis about the factor structure. 
+    2. Explanatory
+       - Otherwise, do exploratory FA
+
+*** The Process
+    The questions we need to answer are:
+    1. How many latent factors underly HS?
+    2. What can we call these latent factors?
+    3. What scales load on which factors?
+    4. How well does model fit?
+
+    While also accounting for numerous other issues in applying EFA, we will attempt to answer all of these questions eventually.
+
+*** Difference between CFA and EFA
+
+    Factor Loading Structure (Simple Structure)
+    CFA:
+
+|       | Latent Factors |     |     |
+|-------+----------------+-----+-----|
+| Items | F1             | F2  | F3  |
+|-------+----------------+-----+-----|
+| X1    | 1.0            | -   | -   |
+| X2    | 0.2            | -   | -   |
+| X3    | 1.0            | -   | -   |
+| X4    | -              | 1   | -   |
+| X5    | -              | 0.2 | -   |
+| X6    | -              | 1   | -   |
+| X7    | -              | -   | 1   |
+| X8    | -              | -   | 0.2 |
+| X9    | -              | -   | 1   |
+
+    EFA:
+    #+begin_src R
+    fa.out <- factanal(HS, 3)
+    print(fa.out$loadings, cutoff = 0)
+    #+end_src
+
+    [[.L_Pics/FA_3.png]]
+
+    In CFA, I am making hypotheses about 2 things:
+
+    1. The number of factors underlying my data
+    2. Which items (scales) load onto which factors
+
+    Point #2 denotes a hypothesis we are making about each and every factor loadings.
+
+    Additionally, we are making hypotheses about whether the factors are correlated. If we have three factors, we can test whether they are all uncorrelated, all correlated, or only two are correlated.
+
+    The important point about CFA is that we are setting specific parameters in the model to zero, and testing whether the lack of these relationships negatively influences the fit of our model.
+
+    #+begin_src R
+    mod <- 'f1 =~ x1 + x2 + x3
+            f2 =~ x4 + x5 + x6
+            f1 ~~ 0*f2'
+
+    out <- cfa(mod, HS)
+    semPlot::semPaths(out, exoCov = F)
+    #+end_src
+
+*** EFA Fit
+
+    In EFA, the only hypothesis we are making regarding our model is the number of factors. Given the nature of EFA estimation, whether the factors are uncorrelated (orthogonal) or correlated (oblique) does not change the fit of the model.
+
+    Additionally, each manifest (observed) variable loads on to each latent factor.
+
+    Technically speaking then, the only way to have misfit in EFA is for there to be residual covariance between variables that is not explained by the latent factors. 
+
+    *Important Point* This means that we did not extract enough latent variables -- as a covariance between uniequenesses is essentially a latent variable.
+
+*** EFA Explanation Part 1
+
+    To go into detail about what EFA is doing, we are positing two things account for our manifest variables:
+    1. the influence of latent factors
+    2. unqiue variances
+
+    The fundamental equation of factor analysis:
+
+    $$Y = \Lambda X + \Psi E$$
+
+    In english, this means that are manifest variables ($Y$) are weighted combinations ($\Lambda$ \& $\Psi$ are the weights) of the common factors in $X$ and the unique factors in $E$.
+
+    However, most of the time we don't try and explain the actual data matrix, but instead the correlation matrix:
+
+    $$R_{YY} = \Lambda R_{XX} \Lambda' + \Psi^{2}$$
+
+    where $R_{XX}$ is the correlation (covariance) matrix among the latent variables. Typically the latent factor variances are constrained to 1. This allows us to estimate all of the factor loadings.
+    
+*** Latent Factor Influence
+
+    So why the hell does that arrow go from the latent factors to the manifest variables?
+    #+begin_src R
+    mod <- 'f1 =~ x1 + x2 + x3 + x4 + x5'
+    out <- cfa(mod,HS)
+    semPlot::semPaths(out)
+    #+end_src
+
+    [[./L_Pics/FA_5.png]]
+    
+    In PCA, these arrows would be flipped around.
+
+    [[./L_Pics/FA_6.png]]
+
+* Week 12: Measurment and ML
+* Week 13: Searching for Groups
 ** Clustering
    <2019-11-05 Tue 09:30-10:45> 
 *** Overview
@@ -1736,158 +2000,93 @@ stab.out11
        - Results should not be taken as the absolute truth about a data set
        - Constitute a starting point for the development of a scientific hypothesis and further study, preferably on an independent data set
 
-* Week 11: Nonlinear methods
-  
-** Mixture Models
-   <2019-11-12 Tue 09:30-10:45>
+** Principal Components Analysis
+*** Principal Components Equations
 
-*** Posterior Probability of Class Membership
+    In contrast to EFA, the equation for PCA is:
 
-    - Each individual has a posterior probability of belonging to each class
-    - Ideally, these probabilities are strong (near 1) for a single class and weak for other classes
-    - Accounts for uncertainty in class assignment
-      - Important when comparing classes on various outcomes and determinants
-
-*** Evaluating Model Fit
-
-    - Statistical Model fit
-      - Log Likelihood
-        - If we didn't penalize our models for complexity, this would always select the most complex one
-      - Penalizing for Complexity:
-        - Akaike Information Criteria
-        - Bayesian Information Criteria
-    - Model Usefulness
-      - Substantive Interpretation
-      - Classification Quality: how well are we able to classify both groups?
-        - Classification Table
-        - Entropy
-
-*** Practical Issues
+    $$Y = \Lambda X$$
     
-    There is no minimum sample size.
-    - Sample size is related to the number and type of classes you can identify
+    ... where:
 
-    Sample size and the outcomes both influence the type and number of classes. Within-class model and between-class contraints determines the type and number of classes
-
-*** Estimation Issues
+    $$\Lambda = A D^{1/2}$$
     
-    - Convergence
-      - Log-Likelihood should increase smoothly; absolute and relative changes should go to zero; class counts should be stable
-    - Convergence problems
-      - May need better starting values
-      - May indicate nonidentification
+    ... with A as the eigenvector matrix, and D is a diagonal eigenvalue matrix.
 
-    In short, do not be suprised if you try to run a mixture model and you get problems e.g. "Couldn't find a convergent model."
+*** Difference from FA
 
-*** Convergence Issues
-
-    You need to have multiple starting points for parameter estimation. Otherwise, you may reach a local optimum but not a global optimum.
+    [[./L_Pics/PCA_1.png]]
     
-    More dimensions means you will likely need to test more starting values. If you get a collection of inconsistent log-likelihoods, your surface is likely poorly defined. You want a consistent global optimum.
-    
-    [[./L_Pics/Mixtures_pt2.png]]
+    In contrast to EFA, in PCA you can extract the same number of components as variables. However, in most data reduction settings, usually the minimum number of components to explain either 95% or 99% of the variance are extracted.
 
-*** An Example:
-    
-**** Simulated Data:
 
-     Let's say we have data with 2 variables pulled from 3 groups.
-     
-     - data.1 = data.frame(grp = 1, x = rnorm(100, mean = -2, sd = 1), y = rnorm(100, mean =  2, sd = 1))
-     - data.2 = data.frame(grp = 2, x = rnorm(200, mean =  2, sd = 1), y = rnorm(200, mean = -2, sd = 1))
-     - data.3 = data.frame(grp = 3, x = rnorm(125, mean =  2, sd = 1), y = rnorm(125, mean =  2, sd = 1))
+    For those in data mining, the term SVD (singular value decomposition), or really any other type of decomposition refers to an identical process. They are just transformations of eachother.
+
+    In psychology, when dealing with a dataset that has observations (people), PCA is not nearly as useful as EFA. This is for couple reasons:
+
+    1. Components aren't latent factors. We can't make statements about the construct they could represent
+    2. Factors are akin to true scores, whereas components combined true and error scores
+    3. We can't test hypotheses regarding the number of components. No model fit as in EFA
        
-     [[./L_Pics/Mixtures_pt2_2.png]]
+    *Take Home Message:* Compoenets = common variance + unique variance
 
-**** ~mclust~ models
+*** Applying PCA
 
-     https://cran.r-project.org/web/packages/mclust/vignettes/mclust.html
-     - multivariate mixture
-     - "EII" = spherical, equal volume
-     - "VII" = spherical, unequal volume
-     - "EEI" = diagonal, equal volume and shape
-     - "VEI" = diagonal, varying volume, equal shape
-     - "EVI" = diagonal, equal volume, varying shape
-     - "VVI" = diagonal, varying volume and shape
-     - "EEE" = ellipsoidal, equal volume, shape, and orientation
-     - "EVE" = ellipsoidal, equal volume and orientation (*)
-     - "VEE" = ellipsoidal, equal shape and orientation (*)
-     - "VVE" = ellipsoidal, equal orientation (*)
-     - "EEV" = ellipsoidal, equal volume and equal shape
-     - "VEV" = ellipsoidal, equal shape
-     - "EVV" = ellipsoidal, equal volume (*)
-     - "VVV" = ellipsoidal, varying volume, shape, and orientation
+    #+begin_src R
+    fit <- princomp(HS)
+    summary(fit) # print variance accounted for
+    
+    plot(fit) # View the variance explained by componenets
+    
+    loadings(fit) # Pc loadings
+    #+end_src
 
-**** ~mclust~ output
+*** Parallel Analysis
 
-     [[./L_Pics/Mixtures_pt2_3.png]]
-     
-     - Fits models with all types of constraints and chooses model with highest BIC (df penalty)
-     - Many times, we fit a pre-specified type of model and vary the number of classes
-     
-*** Entropy as Evaluation
-    A measure of classification quality that ranges between 0 and 1. A value of 1 indicates that individuals are easy to classify and a value of 0 indicates that individuals are randomly classified.
+    Even better is to use parallel analysis:
 
-    $$entropy = 1 + \frac{1}{Nlog(k)}\big(\sum_{i=1}^{N}\sum_{k=1}^{K}P(C=k|x_i)log(P(C=k|x_i))   \big)$$
+    #+begin_src R
+    fa.parallele(HS) # from psych package
+    #+end_src
+    
+    [[./L_Pics/PCA_2.png]]
 
-    Values of 0.9-0.8 are considered to be quite good.
-
-*** Summary
-
-    Mixture models are a flexible tool to model heterogeneity by deriving a probabilistic membership to class.
-
-    Some drawbacks:
-    - Can be tough to describe the classes
-    - Tools in R are somewhat simpls
-    - Can be tough to tell when overfitting, particularly in the case of skewed data
-
-    Some of these concerns are ameliorated when pairing with other types of models, such as SEM, allowing for more theory and description.
-
-** Factor Analysis
-  
-*** Outline
-    The focus of this presentation will be:
-
-    1. Introduce Exploratory Factor Analysis
-    2. Differentiate it from Principal Components Analysis
-    3. Specify Necessary EFA Details
-    4. Go Through the Model Fitting Steps
-
-*** FA Intro
-
-    - We are going to take a somewhat circuitous route to understanding factor analysis. Instead of starting with the foundation of factor analysis, we are going to start with why we would use it.
-    - Simply put, it answers the question of: How many constructs underly the scale I created? We will be using the Holzinger-Swineford dataset, a cognitive scale of 9 items (scales). Our question that we will answer is whether this scale measures a singular construct (i.e. intelligence is a singular construct), or whether it is multidimensional in nature. 
-
-*** Holzinger Swineford
-
-    For this presentation we will be using the "classic" Holzinger-Swineford (1939) dataset. It is useful because it has a pretty well established factor structure, but there is some uncertainty about the fit.
-
-    You can access it from Mplus (24 scales), but we will be using the version from the lavaan package (9 scales).
-
-    - x1 Visual perception
-    - x2 Cubes
-    - x3 Lozenges
-    - x4 Paragraph comprehension
-    - x5 Sentence completion
-    - x6 Word meaning
-    - x7 Speeded addition
-    - x8 Speeded counting of dots
-    - x9 Speeded discrimination straight and curved capitals
-
-    Before we use statistical methods to determine how many factors underly these 9 scales, let's examine the correlation matrix.
-
-    [[./L_Pics/FA_1.png]]
-
-*** What is a Latent Factor?
-
-    The basis for methods suchs as exploratory factor analysis, confirmatory factor analysis, and structural equation modeling is posing the existence of latent factors.
-
-    In essence, what we are doing is saying that some "construct" underlies a set of observed variables. The simplest case is that of intelligence. Every (valid) IQ test is the result of some form of factor analysis. By measuring a host of scales, such as picture completion, vocabulary, arithmetic etc... we are saying that the correlation between these variables is not a result of chance occurrence, but the overlap between scales can be attributed to a "common factor".
-
-    The use of factor analysis "tests" whether there are latent factors underlying a correlation matrix (set of variables).
-
-* Week 12: Measurment and ML
-* Week 13: Searching for Groups
 * Week 14: Longitudinal Data
+  <2019-11-19 Tue 09:30-10:45>
+
+** How do we impose a framework on longitudinal data so that we can make sense of it?
+   What we usually do is extract two different factors for *one variable over time.*
+   
+   Diagram:
+
+   [[./L_Pics/Long_1.png]]
+   
+   The two constructs we extract are 1. a factor which describes where people start and 2. a factor which describes how people change over time.
+   
+** Growth Model
+
+   The growth model (Wishart, 1938) has long been the main analytic technique for studying change over time.
+
+   - Model decomposes repeated measures data into a (more or less) smooth trajectory of true scores plus error scores 
+
+   - Smooth trajectory is often a predetermined mathematical function of time
+     - Generally, participants are expected to follow the same type of mathematical function (e.g., linear, logistic), but participants are allowed to have different parameters of the function
+     - Error scores are often assumed to be normally distributed with constant variance over people and time
+       
+   - Commonly specified models can be estimated in either the structural equation modeling (SEM) or mixed-effects modeling (MLM) frameworks
+     
+   - Over time, fewer differences between the two frameworks exist (see Ghisletta & Lindenberger, 2004; Grimm, Ram, & Estabrook, 2017)
+     - Truly nonlinear models can only be directly estimated in the nonlinear mixed-effects modeling framework (with an approximation of the integral of the likelihood function)
+
+** General Specification
+
+   For $i$ in 1 to $N$ and $t$ in 1 to $T$:
+
+   $$y_{ti} = f(\boldsymbol{b}_i, x_{ti}) + e_{ti}$$
+   
+   - $y_{ti}$ outcome for person $i$ measured at time $t$
+   - $f(\boldsymbol{b}_i, x_{ti})$ is a linear or nonlinear function, where /b_i/ is a vector of random coefficients for person /i/, and $x_{ti}$ is the value of the time metric for person /i/ at time /t/
+     - $\boldsymbol{b}_i \text{~} N(\boldsymbol{\beta}, \boldsymbol{\psi})$
+
 * Week 15: Text Mining
 * Week 16: Social Networks

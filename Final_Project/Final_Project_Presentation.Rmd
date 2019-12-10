@@ -1,0 +1,168 @@
+---
+title: "Addiction Treatment as a Sociological Outcome"
+author: "Christopher Carbonaro"
+date: "December 10th, 2019"
+output: 
+  beamer_presentation:
+    theme: Berkeley
+    colortheme: seahorse
+    slide_level: 2
+    incremental: TRUE
+    keep_tex: TRUE
+---
+
+# Introduction
+
+## Drug Use in the U.S.
+
+- 60.2% (164.8 Million) of Americans have consumed alcohol, tobacco, or an illicit drug within the past month
+- Of these users, 31.9 million used an illicit drug within the past month
+- 20% of Americans are estimated to have used an illicit drug within the past year (SAMHSA, 2019, p. 3-8)
+
+
+## Addiction Treatment in the U.S.
+
+Approximately "21.2 million people aged 12 or older needed substance use treatment" in 2018 (SAMHSA, p. 3).
+
+Unfortunately, while this comprises 7.8% of the U.S. population, only 1.4 received treatment within the past year (p. 3).
+
+## This Project's Focus
+
+Given the disparity between the number of individuals in need of treatment and the number who receive it, we are motivated to ask:
+
+**What sociological factors best predict whether an individual will undergo substance abuse treatment?**
+
+
+# Literature Review
+
+## Current Research
+
+This project eschews studying addiction as a neurological phenomenon (see Venniro et al., 2017).
+
+Instead, it builds on work which looks at sociological factors which predict addiction (Boyle, Polinsky, & Hser, 2000; Taylor, Caudy, Blasko, & Taxman, 2017; Battjes, Gordon, O’Grady, Kinlock, & Carswell, 2003).
+
+## Current Research (cont.)
+
+Limitations of current research:
+
+- Small sample sizes (Boyle et. al., 2000; Battjes et. al., 2003)
+- No use of analytic tools other than multiple regression (*Ibid*.)
+- Luongo et. al. (2016) conducted a Canadian study which produced results conflicting with Boyle et. al. (2000) and Battjes et. al. (2003) regarding the importance of:
+  - Severity of substance being abused
+  - Gender
+  - Ethnicity
+  - Age
+  - ... and Education
+  
+## Results
+
+```{r}
+require(pacman)
+p_load(tidyverse,
+       caret,
+       psych,
+       mice,
+       glmnet,
+       gbm,
+       pdp,
+       partykit,
+       party,
+       mclust,
+       mixtools,
+       e1071)
+
+load("C:/Users/clcar/Dropbox/College/Senior Year/Machine_Learning_for_Social_Science/Final_Project/NSDUH-2018/NSDUH_2018.RData")
+
+nsduh <- PUF2018_100819
+
+data_filtered <- nsduh %>%
+  select(TXEVRRCVD2, # Received Treatment OUTCOME
+         irsex, # Gender
+         irmarit, # Marital Status
+         IREDUHIGHST2, # Level of Education
+         AGE2, # Age
+         service, # Military Service
+         HEALTH2, # Self-Assessment of Health
+         sexatract, # Sexual Orientation
+         NEWRACE2, # Ethnicity
+         irwrkstat, # Employment Status
+         IRHHSIZ2, # Number of People in Household
+         IRKI17_2, # Number of children under 18
+         irmcdchp, # Has Medicaid/CHIP
+         irmedicr, # Has Medicare
+         irprvhlt, # Has Private Health Insurance,
+         IRINSUR4, # Has any kind of Health Insurance,
+         POVERTY3, # Living in Poverty
+         ircigrc, # Cigarette Recency
+         iralcrc, # Alcohol Recency
+         irmjrc, # Marijuana Recency
+         ircocrc, # Cocaine Recency
+         ircrkrc, # Crack Recency
+         irherrc, # Heroin Recency
+         irhallucrec, # Hallucinogen Recency
+         irecstmorec, # Ecstacy Recency
+         irketminrec, # Ketamine Recency
+         irdamtfxrec, # DMT/AMT/FOXY Recency
+         irsalviarec, # Salvia Recency
+         irinhalrec, # Inhalant Recency
+         irmethamrec, # Methamphetamine Recency
+         irpnrnmrec, # Pain Reliever Misuse Recency
+         irtrqnmrec, # Tranquilizer Misuse Recency
+         irstmnmrec, # Stimulate Misuse Recency
+         irsednmrec, # Sedative Misuse Recency
+         iralcfy, # Alcohol Frequency pst. yr.
+         irmjfy, # Marijuana Frequency pst. yr
+         ircocfy, # Cocaine Frequency pst. yr.
+         ircrkfy, # Crack Frequency pst. yr.
+         irherfy, # Heroin Frequency pst. yr.
+         irhallucyfq, # Hallucinogen Frequency pst. yr.
+         irinhalyfq, # Inhalant Frequency pst. yr.
+         irmethamyfq # Meth Frequency pst. yr.
+         ) %>%
+  mutate(TXEVRRCVD2 = factor(TXEVRRCVD2))
+
+elastic_trainControl <- trainControl(method = "cv",
+                                     number = 10,
+                                     verboseIter = TRUE)
+
+elastic <- train(TXEVRRCVD2 ~ .,
+                 data = data_filtered,
+                 method = "glmnet",
+                 trControl = elastic_trainControl,
+                 tuneGrid = expand.grid(
+                   .alpha = 0.5,
+                   .lambda = seq(0, 1, by = 0.1)
+                 ),
+                 na.action = na.omit)
+
+
+```
+
+# Works Cited
+
+## Resources
+
+Battjes, R. J., Gordon, M. S., Ogrady, K. E., Kinlock, T. W., & Carswell, M. A. (2003). Factors that Predict Adolescent Motivation for Substance Abuse Treatment. *Journal of Substance Abuse Treatment*, 24(3), 221–232. doi: 10.1016/s0740-5472(03)00022-9
+
+Boyle, K., Polinsky, M. L., & Hser, Y.-I. (2000). Resistance to Drug Abuse Treatment: A Comparison of Drug Users Who Accept or Decline Treatment Referral Assessment. *Journal of Drug Issues*, 30(3), 555–574. doi: 10.1177/002204260003000304
+
+Cohen, J., Ilumoka, A., & Salehi, I. (2015). Neural Network-Based Drug Abuse Treatment Optimization. *Procedia Computer Science*, 61, 454–459. doi: 10.1016/j.procs.2015.09.186
+
+## Resources (cont.)
+
+Hastie, T., Tibshirani, R., & Friedman, J. (2009). *The Elements of Statistical Learning Data Mining, Inference, and Prediction, Second Edition* (2nd ed.). New York, NY: Springer New York.
+
+James, G., Witten, D., Hastie, T., & Tibshirani, R. (2017). *An Introduction to Statistical Learning: With Applications in R*. New York: Springer.
+
+## Resources (cont.)
+
+The Substance Abuse and Mental Health Services Administration. (2019). The Key Substance Use and Mental Health Indicators in the United States: Results from the 2018 National Survey on Drug Use and Health. Retrieved from https://www.samhsa.gov/data/sites/default/files/cbhsq-reports/NSDUHNationalFindingsReport2018/NSDUHNationalFindingsReport2018.pdf
+
+Luongo, N. M., Dong, H., Kerr, T. H., Milloy, M. J. S., Hayashi, K., & Richardson, L. A. (2017). Income Generation and Attitudes Towards Addiction Treatment Among People who use Illicit Drugs in a Canadian Setting. *Addictive Behaviors*, 64, 159–164. doi: 10.1016/j.addbeh.2016.08.041
+
+## Resources (cont.)
+
+Venniro, M., Caprioli, D., Zhang, M., Whitaker, L. R., Zhang, S., Warren, B. L., … Shaham, Y. (2017). The Anterior Insular Cortex→Central Amygdala Glutamatergic Pathway Is Critical to Relapse after Contingency Management. *Neuron*, 96(2). doi: 10.1016/j.neuron.2017.09.024
+
+Yarkoni, T., & Westfall, J. (2017). Choosing Prediction Over Explanation in Psychology: Lessons From Machine Learning. *Perspectives on Psychological Science*, 12(6), 1100–1122. doi: 10.1177/1745691617693393
+
