@@ -53,10 +53,68 @@ Limitations of current research:
   - Ethnicity
   - Age
   - ... and Education
-  
-## Results
 
-```{r}
+## Filling the Research Gap
+
+This project is an attempt to examine the importance of these variables (and others) on a larger scale while 1. looking for interactions between the predictors and 2. using tools other than OLS.
+
+# Methods
+
+## Source of Data
+
+This project uses a survey conducted by the Substance Abuse and Mental Health Services Administration (SAMHSA), namely the 2018 National Survey on Drug Use and Health (NSDUH).
+
+The survey consists of roughly 56,000 participants.
+
+## Predictors in the Data
+
+There are hundreds of variables for each respondant in the NSDUH; this study narrows the focus to roughly 40 predictors.
+
+These include variables like age and gender, variables describing the individual's health insurance coverage, and variables describing their recency/frequency/type of drug use.
+
+## Logistic Regression
+
+Our first tool for examining the data is regularized regression. We use this as a baseline against which to compare our second tool.
+
+Here, we use the elastic net to assess the importance of each variable and avoid producing an overcomplicated model.
+
+## Logistic Regression (cont.)
+
+$$log\frac{Pr(G = 2|X=x)}{Pr(G=1|X=x)}=\beta_0 + \beta^Tx$$
+
+## Logistic Regression (cont.)
+
+$${\widehat{\beta}}^{\text{elastic net}} = \text{argmin}\frac{1}{2}\sum_{i = 1}^{N}{(y_{i} - \beta_{0} - \sum_{j = 1}^{p}x_{\text{ij}}\beta_{j})^{2}}$$
+$$ + \lambda\sum_{j = 1}^{p}{{(\alpha\beta_{j}^{2} + (1 - \alpha)|\beta}_{j}|)}$$
+  
+## Boosting
+
+One of the biggest problems with linear regression is we have a comparatively small number of positive cases (only around 5%).
+
+This makes classifying positive cases difficult.
+
+## Boosting (cont.)
+
+Boosting is a helpful solution here, since it will raise the relative importance of misclassified observations for each subsequent tree.
+
+We can also use partial dependence plots to look for interactions between important terms.
+
+## Boosting (cont.)
+
+From Witten, Hastie, & Tibshirani (2017, p. 323):
+
+1. Set ${\widehat{f}(x) = 0}$ and $r_i = y_i$ for all $i$ in the training set.
+2. For b = 1, 2, ... , B, repeat:
+  a. Fit a tree $\widehat{f}^b$ with d splits to the training data
+  b. Update $\widehat{f}$ by adding in a shrunken version of the new tree: $$\widehat{f}(x) \leftarrow \widehat{f}(x) + \lambda \widehat{f}^b(x)$$
+  c. Update the residuals: $$r_i \leftarrow r_i - \lambda \widehat{f}^b(x_i)$$
+3. Output the boosted model: $$\widehat{f}(x) = \sum_{b=1}^{B}{\lambda \widehat{f}^b(x)}$$
+
+# Results
+
+## OLS Results
+
+```{r loadCleanData, echo=FALSE, message=F, warning=F}
 require(pacman)
 p_load(tidyverse,
        caret,
@@ -122,8 +180,7 @@ data_filtered <- nsduh %>%
   mutate(TXEVRRCVD2 = factor(TXEVRRCVD2))
 
 elastic_trainControl <- trainControl(method = "cv",
-                                     number = 10,
-                                     verboseIter = TRUE)
+                                     number = 10)
 
 elastic <- train(TXEVRRCVD2 ~ .,
                  data = data_filtered,
@@ -131,12 +188,47 @@ elastic <- train(TXEVRRCVD2 ~ .,
                  trControl = elastic_trainControl,
                  tuneGrid = expand.grid(
                    .alpha = 0.5,
-                   .lambda = seq(0, 1, by = 0.1)
+                   .lambda = seq(0, 1, by = 0.05)
                  ),
                  na.action = na.omit)
 
+### y_elastic <- data_filtered$TXEVRRCVD2
+### x_elastic <- data_filtered %>%
+###   select(-TXEVRRCVD2) %>%
+###   as.matrix.data.frame()
+### 
+### elastic2 <- cv.glmnet(x=x_elastic,
+###                       y=y_elastic,
+###                       family="binomial")
 
 ```
+
+```{r}
+knitr::kable(elastic$results)
+```
+
+***
+
+```{r, comment=""}
+summary(elastic$results)
+```
+
+***
+
+```{r}
+plot(elastic)
+```
+
+## Boosting Results
+
+```{r}
+
+```
+
+
+# Next Steps
+
+
 
 # Works Cited
 
