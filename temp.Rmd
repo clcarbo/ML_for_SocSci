@@ -1,8 +1,0 @@
----
-output:
-  word_document: default
-  html_document: default
----
-$\hat{\beta}^{\text{ridge}} = \text{argmin}\sum_{i = 1}^N{(y_i - \beta_0 - \sum_{j=1} ^ p x_{ij}\beta_j)^2 + \lambda\sum_{j = 1}^p\beta_j^2}$
-
-$$\text{err}_m = \frac{\sum_{i = 1}^N{w_i I(y_i) \neq G_m(x_i)}}{\sum_{i=1}^N w_i}$$

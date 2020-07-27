@@ -1,4 +1,19 @@
 #+TITLE: Machine Learning for Social Science
 #+AUTHOR: Christopher Carbonaro
 
-These are my scripts for my Machine Learning class. I will probably add more details here from my lecture notes over time.
+* Introduction for visitors
+This repo contains my work from a class I took on Machine Learning with Professor Ross Jacobucci at the University of Notre Dame.
+
+** Learning more about Machine Learning
+   For anyone interested in learning more about ML, feel free to take a look at the ~Machine_Learning_for_Social_and_Behavioral_Research.org~ file. It contains all of the notes I took during the entirety of the class. It is a ~.org~ file (i.e. it was written for Emacs's Org-Mode), so most of it should be readable on GitHub. 
+
+*** Converting the notes to different formats
+
+    Although most of the notes should be viewable on Github, some of the LaTeX equations may not be parsed properly. For those of you out there who are familiar with Emacs, you can download the file and use Org Mode's exporter to export the file to the format of your choosing. If you have no idea what that means or entails, the easiest solution is probably to use [[https://pandoc.org/][Pandoc]]. Download and install the program. Then open Terminal on Mac/Linux or CMD/PowerShell on Windows. Use the ~cd~ command to navigate to the directory (folder) containing the file. Then run ~pandoc -s -o <output> <input>~ where ~<output>~ is the name of the file you want to create e.g. ~notes.docx~ or ~notes.pdf~ and ~<input>~ is the name of the file (which should be ~Machine_Learning_for_Social_and_Behavioral_Research.org~, assuming you didn't change the name of the file when you saved it).
+
+    If all else fails, feel free to send me an email at ccarbona@alumni.nd.edu and I'll be happy to send you a converted copy.
+
+** Examples of my work
+
+   For individuals who are interested in my research capabilities, please take a look at the contents of the Final_Project folder.
+

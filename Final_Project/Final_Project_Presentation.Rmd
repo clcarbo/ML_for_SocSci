@@ -2,13 +2,7 @@
 title: "Addiction Treatment as a Sociological Outcome"
 author: "Christopher Carbonaro"
 date: "December 10th, 2019"
-output: 
-  beamer_presentation:
-    theme: Berkeley
-    colortheme: seahorse
-    slide_level: 2
-    incremental: TRUE
-    keep_tex: TRUE
+output: powerpoint_presentation
 ---
 
 # Introduction
@@ -179,8 +173,12 @@ data_filtered <- nsduh %>%
          ) %>%
   mutate(TXEVRRCVD2 = factor(TXEVRRCVD2))
 
+data_filtered$TXEVRRCVD2 <- as_factor(data_filtered$TXEVRRCVD2) %>%
+  recode(`1` = "Treated", `0` = "NotTreated")
+
 elastic_trainControl <- trainControl(method = "cv",
-                                     number = 10)
+                                     number = 10,
+                                     classProbs = T)
 
 elastic <- train(TXEVRRCVD2 ~ .,
                  data = data_filtered,
@@ -188,9 +186,10 @@ elastic <- train(TXEVRRCVD2 ~ .,
                  trControl = elastic_trainControl,
                  tuneGrid = expand.grid(
                    .alpha = 0.5,
-                   .lambda = seq(0, 1, by = 0.05)
+                   .lambda = seq(0, 1, by = 0.01)
                  ),
-                 na.action = na.omit)
+                 na.action = na.omit,
+                 metric = "ROC")
 
 ### y_elastic <- data_filtered$TXEVRRCVD2
 ### x_elastic <- data_filtered %>%
@@ -209,6 +208,24 @@ knitr::kable(elastic$results)
 
 ***
 
+```{r}
+plot(elastic$finalModel)
+```
+
+***
+
+```{r}
+plot(elastic$finalModel, xvar = "dev")
+```
+
+***
+
+```{r}
+plot(elastic$finalModel, xvar = "lambda")
+```
+
+***
+
 ```{r, comment=""}
 summary(elastic$results)
 ```
@@ -219,16 +236,68 @@ summary(elastic$results)
 plot(elastic)
 ```
 
+## OLS Results Discussion
+
+What does this mean?
+
+Our model is having a tough time predicting positive cases. We have a high accuracy rating, but this is because most cases are negative; our model is assuming most people are not seeking treatment, and so we are not explaining much variance.
+
 ## Boosting Results
 
-```{r}
+```{r, include=F, cache=T}
+gbmGrid <-  expand.grid(interaction.depth = c(1,2), 
+                        n.trees = c(100,500, 1000), 
+                        shrinkage = c(.1,.01, .001),
+                        n.minobsinnode = 50)
 
+boost <- train(TXEVRRCVD2 ~ .,
+               data = data_filtered,
+               method = "gbm",
+               trControl = elastic_trainControl,
+               tuneGrid = gbmGrid,
+               na.action = na.omit,
+               metric = "ROC")
 ```
 
 
+```{r}
+summary(boost$finalModel)
+```
+
+***
+
+```{r}
+summary(boost$results)
+
+boost$finalModel %>%
+  partial(pred.var = "IREDUHIGHST2",
+          n.trees = boost$finalModel$n.trees,
+          train = boost$trainingData,
+          plot=T,
+          rug=T)
+```
+
+***
+
+```{r}
+gbm.perf(boost$finalModel)
+```
+
+## Boosting Discussion
+
+Frequency of use is by far the best predictor of whether someone sought treatment.
+
+Variable measuring frequency of Marijuana use and Heroin use are roughly equally important.
+
 # Next Steps
 
+## Next Steps
 
+1. Check the confusion matrix for the `glmnet` output
+
+2. Recode some data to improve OLS (missing data is coded in a way which I suspect is skewing results)
+
+3. Get boosting to converge and examine PDPs.
 
 # Works Cited
 
